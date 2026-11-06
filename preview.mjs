@@ -442,6 +442,11 @@ function renderLibrary() {
   $('undo-deduct').hidden = !undo;
   if (undo) $('undo-deduct').textContent = '撤销减豆 · ' + undo.values.name;
   $('count').textContent = String(records.length);
+  const stockTotal = records.reduce((total, {values}) => {
+    const remaining = hundredths(values.remaining);
+    return Number.isFinite(remaining) && remaining > 0 ? total + remaining : total;
+  }, 0);
+  $('stock-total').textContent = formatGrams.format(stockTotal / 100);
   $('new-entry').textContent = readDraft(null) ? '继续新增草稿' : '添加咖啡豆';
   $('library-tools').hidden = records.length === 0;
   $('entries').replaceChildren();
