@@ -24,9 +24,8 @@
 <div class="capture-actions"><button id="gallery-open" class="quiet" type="button">从相册选图</button><button id="manual-entry" class="quiet" type="button">手动录入</button></div>
 <input id="camera" type="file" accept="image/*" capture="environment" hidden>
 <input id="gallery" type="file" accept="image/*" hidden>
-<p id="scan-status" role="status">让包装文字填满画面，避开反光。</p>
+<p id="scan-status" role="status">拍照或选图后，照片会发送给 GLM 识别。</p>
 <button id="cancel-scan" class="quiet" type="button" hidden>停止识别，手动录入</button>
-<button id="ai-scan" class="quiet" type="button" hidden>AI 辅助识别</button>
 <details id="raw" hidden><summary>查看识别原文</summary><pre id="raw-text"></pre></details>
 </aside>
 <form id="entry">
@@ -56,12 +55,6 @@
 <div id="entries"></div>
 </section>
 </main>
-<dialog id="ai-dialog" aria-labelledby="ai-title"><form id="ai-form">
-<h2 id="ai-title">AI 辅助识别</h2>
-<p id="ai-disclosure"></p>
-<label for="ai-code">识别访问码</label><input id="ai-code" type="password" autocomplete="off" required>
-<div class="dialog-actions"><button id="ai-close" type="button">取消</button><button class="primary" type="submit">发送照片并识别</button></div>
-</form></dialog>
 <dialog id="discard-confirm" aria-labelledby="discard-title">
 <h2 id="discard-title">丢弃草稿？</h2>
 <p>本次未保存的修改会被清除。</p>
