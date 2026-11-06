@@ -363,6 +363,7 @@ function beanActionRow(card, controls, record) {
   let gesture;
   let suppressClickUntil = 0;
   card.addEventListener('pointerdown', event => {
+    suppressClickUntil = 0;
     if (!event.isPrimary || event.button !== 0 || event.pointerType === 'mouse') return;
     if (closeBeanActions !== close) closeBeanActions?.();
     gesture = {id: event.pointerId, x: event.clientX, y: event.clientY, start: actions.inert ? 0 : actions.offsetWidth};
@@ -381,14 +382,15 @@ function beanActionRow(card, controls, record) {
       card.setPointerCapture(event.pointerId);
       wrapper.classList.add('is-dragging');
     }
-    gesture.offset = Math.min(actions.offsetWidth, Math.max(0, gesture.start + x));
-    card.style.setProperty('--drag-offset', gesture.offset + 'px');
+    gesture.offset = Math.min(actions.offsetWidth, Math.max(0, gesture.start - x));
+    card.style.setProperty('--drag-offset', -gesture.offset + 'px');
   });
   function endSwipe(event) {
     if (gesture?.id !== event.pointerId) return;
     if (gesture.dragging) {
       suppressClickUntil = Date.now() + 400;
-      setOpen(event.type === 'pointerup' ? gesture.offset >= actions.offsetWidth * 0.35 : gesture.start > 0);
+      const threshold = actions.offsetWidth * (gesture.start > 0 ? 0.65 : 0.35);
+      setOpen(event.type === 'pointerup' ? gesture.offset >= threshold : gesture.start > 0);
       wrapper.classList.remove('is-dragging');
       card.style.removeProperty('--drag-offset');
     }

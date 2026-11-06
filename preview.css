@@ -43,9 +43,9 @@ footer button{flex-shrink:0}
 .bean-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding-bottom:24px}
 .bean-row{position:relative;overflow:hidden;border-radius:var(--radius);--action-width:158px}
 .bean-card{position:relative;display:grid;grid-template-columns:84px minmax(0,1fr) auto;align-items:center;gap:16px;min-width:0;padding:14px 16px;border:1px solid var(--rule);border-radius:var(--radius);background:var(--surface);touch-action:pan-y pinch-zoom;transform:translateX(var(--drag-offset,0px));transition:transform .2s ease-out}
-.bean-row.is-open .bean-card{transform:translateX(var(--drag-offset,var(--action-width)))}
+.bean-row.is-open .bean-card{transform:translateX(var(--drag-offset,calc(-1 * var(--action-width))))}
 .bean-row.is-dragging .bean-card{transition:none;user-select:none}
-.bean-actions{position:absolute;inset-block:0;left:0;width:var(--action-width);display:flex;align-items:center;gap:6px;padding:0 8px 0 2px;visibility:hidden}
+.bean-actions{position:absolute;inset-block:0;right:0;width:var(--action-width);display:flex;align-items:center;gap:6px;padding:0 2px 0 8px;visibility:hidden}
 .bean-row:is(.is-open,.is-dragging) .bean-actions{visibility:visible}
 .bean-actions button{flex:1;min-height:48px;padding-inline:6px;border-radius:12px;font-size:14px;font-weight:650;white-space:nowrap}
 .bean-actions button:first-child{background:var(--green);color:white}
