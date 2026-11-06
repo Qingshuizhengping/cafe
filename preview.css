@@ -40,8 +40,8 @@ footer{display:flex;align-items:center;justify-content:space-between;gap:8px;pos
 footer p{margin:0;font-size:14px;color:var(--muted)}
 footer button{flex-shrink:0}
 #entries{margin-top:22px}
-.bean-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;padding-bottom:24px}
-.bean-card{display:grid;grid-template-rows:auto 1fr auto auto;min-width:0;padding:14px;border:1px solid var(--rule);border-radius:var(--radius);background:var(--surface)}
+.bean-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding-bottom:24px}
+.bean-card{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) auto;align-items:center;gap:18px;min-width:0;padding:16px;border:1px solid var(--rule);border-radius:var(--radius);background:var(--surface)}
 .record{display:grid;grid-template-columns:54px minmax(0,1fr);align-items:center;gap:10px;width:100%;min-width:0;padding:0;text-align:left;overflow-wrap:anywhere}
 .record:hover{background:transparent}
 .record:hover strong{text-decoration:underline;text-underline-offset:.2em}
@@ -49,15 +49,16 @@ footer button{flex-shrink:0}
 .record small{display:block;margin-top:3px;font-size:12px;color:var(--muted)}
 .bean-cover{display:grid;place-items:center;aspect-ratio:1;overflow:hidden;border-radius:8px;background:#e3eadb;color:var(--green);font-size:25px;font-weight:700}
 .bean-cover img{width:100%;height:100%;object-fit:cover}
-.bean-stock{align-self:end;margin-top:17px;padding-top:10px;border-top:1px solid var(--rule);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.bean-stock{font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .bean-stock span,.bean-metrics dt{font-size:12px;color:var(--muted)}
 .bean-stock strong{font-size:clamp(22px,4.7vw,30px);line-height:1.22;letter-spacing:-.035em}
 .bean-stock progress{display:block;width:100%;height:5px;margin-top:8px;appearance:none;border:0;border-radius:8px;background:#e2e9df}
 .bean-stock progress::-webkit-progress-bar{background:#e2e9df;border-radius:8px}
 .bean-stock progress::-webkit-progress-value{background:#52765c;border-radius:8px}
 .bean-stock progress::-moz-progress-bar{background:#52765c;border-radius:8px}
-.bean-metrics{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:13px 0 10px}
+.bean-metrics{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin:0}
 .bean-metrics dd{margin:2px 0 0;font-size:13px;font-weight:650;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.bean-date-action{margin:-8px -4px;padding:8px 4px;text-align:left;text-decoration:underline;text-underline-offset:.2em}
 .deduct-button{width:100%;border:1px solid var(--rule);font-weight:650}
 .deduct-button:disabled{cursor:default}
 #library-status:empty,#deduct-error:empty{margin:0}
@@ -87,9 +88,9 @@ dialog input{border-color:var(--rule);margin-top:4px}
 #recent-dose{margin-top:8px}
 #deduct-preview{font-weight:650}
 #deduct-preview:empty{margin:0}
-@media(max-width:850px){.bean-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:690px){.capture .viewfinder{height:94px}.capture .viewfinder svg{max-height:94px}.capture .viewfinder:has(img:not([hidden])){height:148px}.bean-grid{gap:10px}.bean-card{padding:11px}.record{grid-template-columns:44px minmax(0,1fr);gap:7px}.record strong{font-size:15px}}
-@media(max-width:365px){.bean-grid{grid-template-columns:1fr}}
+@media(max-width:720px){.bean-card{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:14px}.bean-card .record,.bean-card .deduct-button{grid-column:1/-1}.bean-card .record{padding-bottom:12px;border-bottom:1px solid var(--rule)}}
+@media(max-width:690px){.capture .viewfinder{height:94px}.capture .viewfinder svg{max-height:94px}.capture .viewfinder:has(img:not([hidden])){height:148px}}
+@media(max-width:365px){.bean-card{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:8px}.bean-metrics{gap:6px}}
 .review-panel{border:1px solid var(--rule);border-radius:var(--radius);background:var(--surface);padding:14px 16px;margin-bottom:12px}
 .review-panel h2,.review-panel p{margin:0 0 6px}
 .review-panel button,#discard-draft{text-decoration:underline;text-underline-offset:.2em}

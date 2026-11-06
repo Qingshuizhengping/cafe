@@ -12,13 +12,14 @@ const groups = {
     ['name', '名称', 'text', '咖啡豆名称', true],
     ['weight', '总重量（g）', 'number', '包装净含量', true],
     ['remaining', '剩余重量（g）', 'number', '输入当前剩余', true],
+    ['roastDate', '烘焙日期', 'date'],
   ],
   购买信息: [
     ['price', '价格（CNY）', 'number', '可选'],
     ['unitPrice', '单克价（CNY/g）', 'output'],
   ],
   包装信息: [
-    ['roaster', '烘焙商'], ['roastDate', '烘焙日期', 'date'],
+    ['roaster', '烘焙商'],
     ['roast', '烘焙程度', ['极浅烘', '浅烘', '中浅烘', '中烘', '中深烘', '深烘', '极深烘']],
     ['origin', '产地'], ['farm', '庄园'], ['variety', '豆种'],
     ['altitude', '海拔（m）'], ['process', '处理法'], ['flavors', '风味', 'text', '用顿号分隔'],
@@ -253,12 +254,12 @@ $('confirm-discard').onclick = () => {
 const formatGrams = new Intl.NumberFormat('zh-CN', {maximumFractionDigits: 2, useGrouping: false});
 
 function beanAge(date, now) {
-  if (!date) return '未填日期';
+  if (!date) return null;
   const roastDay = Date.parse(date);
+  if (!Number.isFinite(roastDay) || new Date(roastDay).toISOString().slice(0, 10) !== date) return null;
   const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
   const days = (today - roastDay) / 86400000;
-  if (!Number.isFinite(days)) return '未填日期';
-  return days < 0 ? '日期待核对' : days + ' 天';
+  return days >= 0 ? days : null;
 }
 
 function beanMetric(label, value) {
@@ -266,7 +267,7 @@ function beanMetric(label, value) {
   const term = document.createElement('dt');
   const amount = document.createElement('dd');
   term.textContent = label;
-  amount.textContent = value;
+  amount.append(value);
   metric.append(term, amount);
   return metric;
 }
@@ -338,7 +339,19 @@ function renderLibrary() {
     metrics.className = 'bean-metrics';
     const price = values.price != null && values.price !== '' && weight > 0
       ? (Number(values.price) / weight).toFixed(2) + ' 元/g' : '未填价格';
-    metrics.append(beanMetric('养豆天数', beanAge(values.roastDate, now)), beanMetric('单克价', price));
+    const age = beanAge(values.roastDate, now);
+    let ageValue = age === null ? document.createElement('button') : age + ' 天';
+    if (age === null) {
+      ageValue.type = 'button';
+      ageValue.className = 'bean-date-action';
+      ageValue.textContent = values.roastDate ? '核对烘焙日期' : '补填烘焙日期';
+      ageValue.setAttribute('aria-label', ageValue.textContent + ' · ' + values.name);
+      ageValue.onclick = () => {
+        openRecord(record);
+        $('roastDate').focus();
+      };
+    }
+    metrics.append(beanMetric('养豆天数', ageValue), beanMetric('单克价', price));
     const deduct = document.createElement('button');
     deduct.className = 'deduct-button';
     deduct.type = 'button';
