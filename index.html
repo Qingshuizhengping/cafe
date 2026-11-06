@@ -11,12 +11,6 @@
 <script type="module" src="./preview.mjs"></script>
 </head>
 <body>
-<svg class="glass-filter-defs" width="0" height="0" aria-hidden="true" focusable="false">
-<defs><filter id="bean-glass-refraction" color-interpolation-filters="sRGB">
-<feTurbulence type="fractalNoise" baseFrequency=".012 .028" numOctaves="1" seed="8" result="refraction-map"/>
-<feDisplacementMap in="SourceGraphic" in2="refraction-map" scale="16" xChannelSelector="R" yChannelSelector="G"/>
-</filter></defs>
-</svg>
 <header class="site-header">
 <nav class="shell bar" aria-label="豆档导航">
 <span id="brand" class="brand" hidden>豆档</span>

@@ -496,14 +496,11 @@ function renderLibrary() {
       ? beanFieldAction(record, 'roastDate', values.roastDate ? '核对烘焙日期' : '补填烘焙日期')
       : '养豆 ' + age + ' 天';
     metrics.append(beanMetric('', ageValue), beanMetric('剩余及总重量 ', stock), beanMetric('单克价 ', price));
-    const identity = document.createElement('div');
-    identity.className = 'bean-identity';
-    identity.append(button, metrics);
     const context = [record.pinnedAt ? '已置顶' : '', values.origin, remaining === 0 ? '已用完' : '', readDraft(record.id) ? '有草稿' : ''].filter(Boolean);
     if (context.length) {
       const detail = document.createElement('small');
       detail.textContent = context.join(' · ');
-      identity.append(detail);
+      button.append(detail);
     }
     const deduct = document.createElement('button');
     deduct.className = 'deduct-button';
@@ -524,7 +521,7 @@ function renderLibrary() {
     const controls = document.createElement('div');
     controls.className = 'bean-controls';
     controls.append(deduct);
-    row.append(media, identity, controls);
+    row.append(media, button, metrics, controls);
     $('entries').append(beanActionRow(row, controls, record));
   }
 }
