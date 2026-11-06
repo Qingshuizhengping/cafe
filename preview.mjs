@@ -93,7 +93,9 @@ let objectUrl;
 let busy = false;
 let records = [];
 let deducting;
-let lastDeduction;
+let stockConflict;
+let scanController;
+let review = {};
 
 function readRecords() {
   const stored = JSON.parse(localStorage.getItem(key));
@@ -155,11 +157,13 @@ function formValues() {
 function saveDraft() {
   const values = formValues();
   try {
-    if (Object.keys(values).some(name => values[name] !== (originalValues[name] ?? ''))) {
-      localStorage.setItem(draftId(), JSON.stringify({values, originalValues}));
+    const dirty = Object.keys(review).length || Object.keys(values).some(name => values[name] !== (originalValues[name] ?? ''));
+    if (dirty) {
+      localStorage.setItem(draftId(), JSON.stringify({values, originalValues, review}));
     } else {
       localStorage.removeItem(draftId());
     }
+    $('discard-draft').hidden = !dirty;
   } catch {
     $('save-status').textContent = '草稿无法保存在此设备，请先保存豆档。';
   }
@@ -169,6 +173,8 @@ function openRecord(record) {
   editing = record?.id ?? null;
   const draft = readDraft(editing);
   originalValues = draft?.originalValues ?? record?.values ?? {};
+  review = draft?.review ?? {};
+  $('discard-draft').hidden = !draft;
   form.reset();
   $('editor-title').textContent = record ? '编辑咖啡豆' : '添加咖啡豆';
   $('editor-intro').textContent = record ? record.values.name : '拍下包装标签，核对识别结果后保存。';
@@ -188,11 +194,61 @@ function openRecord(record) {
   for (const [name, value] of Object.entries(draft?.values ?? record?.values ?? {})) {
     if (form.elements.namedItem(name)) form.elements.namedItem(name).value = value;
   }
+  for (const [name, result] of Object.entries(review)) {
+    if (result.pending) showConflict($(name), result.suggested);
+    else if ($(name).value === result.suggested) $(name + '-source').hidden = false;
+  }
   updatePrice();
+  renderReview();
+  showStockConflict(record?.values.remaining);
   showLibrary(false);
 }
 
+function showStockConflict(current) {
+  const proposed = $('remaining').value;
+  stockConflict = current != null && current !== originalValues.remaining &&
+    proposed !== originalValues.remaining && proposed !== current ? current : undefined;
+  $('stock-conflict').hidden = stockConflict === undefined;
+  if (stockConflict !== undefined) {
+    $('stock-conflict-message').textContent = '当前库存 ' + current + ' g，草稿余量 ' + (proposed ? proposed + ' g' : '未填写') + '。请选择要保留的余量。';
+  }
+}
+
+$('use-stock').onclick = () => resolveStock(true);
+$('confirm-stock').onclick = () => resolveStock(false);
+
+function resolveStock(useCurrent) {
+  if (stockConflict === undefined) return;
+  const input = $('remaining');
+  if (!useCurrent && !input.reportValidity()) return;
+  originalValues = {...originalValues, remaining: stockConflict};
+  if (useCurrent) input.value = stockConflict;
+  showStockConflict();
+  $('save-status').textContent = useCurrent ? '已采用当前库存。' : '已确认新余量，请保存豆档。';
+  saveDraft();
+  input.focus();
+}
+
+$('discard-draft').onclick = () => {
+  if (!busy) $('discard-confirm').showModal();
+};
+$('keep-draft').onclick = () => $('discard-confirm').close();
+$('confirm-discard').onclick = () => {
+  $('discard-confirm').close();
+  try {
+    const current = readRecords().find(record => record.id === editing);
+    localStorage.removeItem(draftId());
+    openRecord(current);
+    $('save-status').textContent = '已丢弃草稿。';
+  } catch {
+    $('save-status').textContent = '无法丢弃草稿，请重试。';
+  }
+};
+
 function renderLibrary() {
+  const undo = records.find(record => record.undoDeduction);
+  $('undo-deduct').hidden = !undo;
+  if (undo) $('undo-deduct').textContent = '撤销减豆 · ' + undo.values.name;
   $('count').textContent = String(records.length);
   $('new-entry').textContent = readDraft(null) ? '继续新增草稿' : '添加咖啡豆';
   $('library-tools').hidden = records.length === 0;
@@ -269,7 +325,6 @@ $('deduct-form').addEventListener('submit', async event => {
   const {id} = deducting;
   const grams = $('deduct-grams').valueAsNumber;
   let updated;
-  let previous;
   const token = crypto.randomUUID?.() ?? Date.now() + ':' + Math.random();
   try {
     await updateRecords(current => {
@@ -280,14 +335,14 @@ $('deduct-form').addEventListener('submit', async event => {
       if (!Number.isSafeInteger(available) || !Number.isSafeInteger(used) || used < 1 || used > available) {
         throw new Error('请输入大于 0 且不超过当前余量（' + record.values.remaining + ' g）的克数。');
       }
-      previous = record.values.remaining;
-      updated = {...record, lastDose: grams, deductionToken: token, values: {...record.values, remaining: String((available - used) / 100)}};
-      return current.map(item => item.id === id ? updated : item);
+      const remaining = String((available - used) / 100);
+      updated = {...record, lastDose: grams, undoDeduction: {
+        token, previous: record.values.remaining, remaining, previousDose: record.lastDose,
+      }, values: {...record.values, remaining}};
+      return current.map(item => item.id === id ? updated : item.undoDeduction ? {...item, undoDeduction: null} : item);
     });
     $('deduct').close();
     renderLibrary();
-    lastDeduction = {id, token, previous};
-    $('undo-deduct').hidden = false;
     $('undo-deduct').focus();
     $('library-status').textContent = updated.values.name + '已减豆 ' + grams + '\u00a0g，剩余 ' + updated.values.remaining + '\u00a0g。';
   } catch (error) {
@@ -299,18 +354,19 @@ $('deduct-form').addEventListener('submit', async event => {
 
 $('undo-deduct').onclick = async () => {
   const button = $('undo-deduct');
-  if (!lastDeduction || button.disabled) return;
+  const target = records.find(record => record.undoDeduction);
+  if (!target || button.disabled) return;
   button.disabled = true;
-  const {id, token, previous} = lastDeduction;
+  const {id, undoDeduction: {token, previous, remaining, previousDose}} = target;
   let restored = false;
   try {
     await updateRecords(current => current.map(record => {
-      if (record.id !== id || record.deductionToken !== token) return record;
-      restored = true;
-      return {...record, deductionToken: null, values: {...record.values, remaining: previous}};
+      if (record.id !== id || record.undoDeduction?.token !== token) return record;
+      restored = record.values.remaining === remaining && Number(previous) <= Number(record.values.weight);
+      return restored
+        ? {...record, undoDeduction: null, lastDose: previousDose, values: {...record.values, remaining: previous}}
+        : {...record, undoDeduction: null};
     }));
-    lastDeduction = null;
-    button.hidden = true;
     renderLibrary();
     $('library-title').focus({preventScroll: true});
     $('library-status').textContent = restored
@@ -327,6 +383,33 @@ function clearConflicts() {
   for (const conflict of form.querySelectorAll('.ocr-conflict')) conflict.remove();
 }
 
+function renderReview() {
+  const entries = Object.entries(review);
+  const pending = entries.filter(([, result]) => result.pending).length;
+  $('ocr-review').hidden = !entries.length;
+  $('ocr-progress').textContent = pending ? '还有 ' + pending + ' 项差异待核对。' : '没有待核对的差异，点击字段可查看。';
+  const links = $('ocr-fields');
+  links.replaceChildren();
+  for (const [name, result] of entries) {
+    const input = $(name);
+    const group = input.closest('details');
+    const link = document.createElement('button');
+    link.type = 'button';
+    link.textContent = fieldLabels.get(name) + (result.pending ? ' · 待核对' : '');
+    link.onclick = () => {
+      if (group) group.open = true;
+      input.focus();
+    };
+    links.append(link);
+  }
+  for (const [title, fields] of Object.entries(groups)) {
+    const summary = $('group-' + title).closest('details')?.querySelector('summary');
+    if (!summary) continue;
+    const count = fields.filter(([name]) => review[name]).length;
+    summary.textContent = title + (count ? ' · ' + count + ' 项识别结果' : '');
+  }
+}
+
 function showConflict(input, suggested) {
   const conflict = document.createElement('div');
   conflict.className = 'ocr-conflict';
@@ -336,16 +419,24 @@ function showConflict(input, suggested) {
   keep.type = 'button';
   keep.textContent = '保留当前值';
   keep.onclick = () => {
+    review[input.name].pending = false;
     conflict.remove();
+    renderReview();
+    saveDraft();
     input.focus();
   };
   const use = document.createElement('button');
   use.type = 'button';
   use.textContent = '采用识别值';
   use.onclick = () => {
+    review[input.name].pending = false;
+    conflict.remove();
     input.value = suggested;
     input.dispatchEvent(new Event('input', {bubbles: true}));
     $(input.name + '-source').hidden = false;
+    review[input.name] = {suggested, pending: false};
+    renderReview();
+    saveDraft();
     input.focus();
   };
   conflict.append(text, keep, use);
@@ -374,7 +465,11 @@ form.addEventListener('invalid', event => {
 form.addEventListener('input', event => {
   const source = $(event.target.name + '-source');
   if (source) source.hidden = true;
-  event.target.closest('.field')?.querySelector('.ocr-conflict')?.remove();
+  if (review[event.target.name]?.pending) {
+    event.target.closest('.field').querySelector('.ocr-conflict').firstChild.textContent =
+      fieldLabels.get(event.target.name) + ' · 当前「' + event.target.value + '」，识别为「' + review[event.target.name].suggested + '」。';
+  }
+  if (event.target.id === 'remaining' && stockConflict !== undefined) showStockConflict(stockConflict);
   $('remaining').setCustomValidity('');
   updatePrice();
   saveDraft();
@@ -382,6 +477,15 @@ form.addEventListener('input', event => {
 form.addEventListener('submit', async event => {
   event.preventDefault();
   if (busy) return;
+  const pending = Object.keys(review).find(name => review[name].pending);
+  if (pending) {
+    $('save-status').textContent = '请先处理识别差异，再保存豆档。';
+    const input = $(pending);
+    const group = input.closest('details');
+    if (group) group.open = true;
+    input.closest('.field').querySelector('.ocr-conflict button').focus();
+    return;
+  }
   if ($('remaining').valueAsNumber > $('weight').valueAsNumber) {
     $('remaining').setCustomValidity('剩余重量不能超过总重量。');
     $('remaining').reportValidity();
@@ -404,6 +508,8 @@ form.addEventListener('submit', async event => {
       if (!existing) return [{id, values}, ...current];
       const changes = Object.fromEntries(Object.entries(values).filter(([name, value]) => value !== (originalValues[name] ?? '')));
       if ('remaining' in changes && existing.values.remaining !== originalValues.remaining && changes.remaining !== existing.values.remaining) {
+        showStockConflict(existing.values.remaining);
+        $('stock-conflict-title').focus();
         throw new Error('这包豆的余量已更新。当前为 ' + existing.values.remaining + ' g，请核对后再保存。');
       }
       const merged = {...existing.values, ...changes};
@@ -412,7 +518,8 @@ form.addEventListener('submit', async event => {
       }
       return current.map(record => record.id === id ? {
         ...existing, values: merged,
-        deductionToken: merged.remaining === existing.values.remaining ? existing.deductionToken : null,
+        undoDeduction: merged.remaining === existing.values.remaining && Number(merged.weight) >= Number(existing.undoDeduction?.previous)
+          ? existing.undoDeduction : null,
       } : record);
     });
     try { localStorage.removeItem(draftId()); } catch {}
@@ -429,14 +536,29 @@ form.addEventListener('submit', async event => {
 
 $('camera-open').onclick = () => $('camera').click();
 $('gallery-open').onclick = () => $('gallery').click();
+$('cancel-scan').onclick = () => {
+  scanController.abort();
+  scanController = undefined;
+  setScanBusy(false);
+  $('scan-status').textContent = '已停止识别。';
+  $('manual-entry').click();
+};
+
+function setScanBusy(value) {
+  busy = value;
+  for (const id of ['camera-open', 'gallery-open', 'manual-entry', 'library-toggle']) $(id).disabled = value;
+  form.querySelector('[type=submit]').disabled = value;
+  $('cancel-scan').hidden = !value;
+}
+
 for (const id of ['camera', 'gallery']) {
   $(id).addEventListener('change', async event => {
     const file = event.target.files[0];
     event.target.value = '';
     if (!file || busy) return;
-    busy = true;
-    for (const id of ['camera-open', 'gallery-open', 'manual-entry', 'library-toggle']) $(id).disabled = true;
-    form.querySelector('[type=submit]').disabled = true;
+    const controller = new AbortController();
+    scanController = controller;
+    setScanBusy(true);
     $('raw').hidden = true;
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     objectUrl = URL.createObjectURL(file);
@@ -445,16 +567,19 @@ for (const id of ['camera', 'gallery']) {
     $('scan-status').textContent = '正在加载中英文识别组件…';
     try {
       const {default: {createWorker}} = await import('https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/tesseract.esm.min.js');
+      if (controller.signal.aborted) return;
       const {text, fields} = await scanLabel(file, createWorker, progress => {
-        $('scan-status').textContent = '正在识别 ' + Math.round(progress * 100) + '%';
-      });
+        if (!controller.signal.aborted) $('scan-status').textContent = '正在识别 ' + Math.round(progress * 100) + '%';
+      }, controller.signal);
+      if (controller.signal.aborted) return;
       $('raw-text').textContent = text;
       $('raw').hidden = !text.trim();
       let filled = 0;
       let conflicts = 0;
-      clearConflicts();
       for (const [name, value] of Object.entries(fields)) {
         const input = $(name);
+        input.closest('.field').querySelector('.ocr-conflict')?.remove();
+        review[name] = {suggested: value, pending: Boolean(input.value && input.value !== value)};
         if (!input.value) {
           input.value = value;
           $(name + '-source').hidden = false;
@@ -467,16 +592,18 @@ for (const id of ['camera', 'gallery']) {
         }
       }
       updatePrice();
+      renderReview();
       saveDraft();
       $('scan-status').textContent = filled || conflicts
-        ? '已填入 ' + filled + ' 项。' + (conflicts ? '请在表单中核对 ' + conflicts + ' 项差异。' : '保存前请展开相关分组核对。')
+        ? '识别完成。可在「核对识别结果」中查看字段。'
         : '未找到可自动填写的字段。可以查看原文、重拍或手动输入。';
     } catch {
-      $('scan-status').textContent = '识别失败。请检查网络，重拍、选用 JPEG 或手动填写。';
+      if (!controller.signal.aborted) $('scan-status').textContent = '识别失败。请检查网络，重拍、选用 JPEG 或手动填写。';
     } finally {
-      busy = false;
-      for (const id of ['camera-open', 'gallery-open', 'manual-entry', 'library-toggle']) $(id).disabled = false;
-      form.querySelector('[type=submit]').disabled = false;
+      if (scanController === controller) {
+        scanController = undefined;
+        setScanBusy(false);
+      }
     }
   });
 }
