@@ -8,7 +8,7 @@
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#141414">
 <title>豆档 · 咖啡豆录入</title>
 <link rel="stylesheet" href="./preview.css">
-<script type="module" src="./preview.mjs"></script>
+<script type="module" src="./preview.mjs?v=2"></script>
 </head>
 <body>
 <header class="site-header">
@@ -18,7 +18,6 @@
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg>
 我的豆库
 </button>
-<button id="install-open" type="button">安装到 iPhone</button>
 </nav>
 </header>
 <main class="shell">
@@ -102,13 +101,6 @@
 <p id="deduct-preview" role="status"></p>
 <p id="deduct-error" role="status"></p>
 <div class="dialog-actions"><button type="button" id="deduct-cancel">取消</button><button class="primary" type="submit">确认减豆</button></div>
-</form></dialog>
-<dialog id="install" aria-labelledby="install-title"><form id="profile">
-<h2 id="install-title">安装到 iPhone</h2>
-<p>输入部署后的 HTTPS 网址。在 iPhone 的 Safari 下载描述文件，再到「设置 → 已下载描述文件」安装。</p>
-<label for="address">Web App 网址</label><input type="url" id="address" placeholder="https://" required>
-<p id="profile-error" role="status"></p>
-<div class="dialog-actions"><button type="button" id="install-close">关闭</button><button class="primary" type="submit">下载描述文件</button></div>
 </form></dialog>
 </body></html>
 

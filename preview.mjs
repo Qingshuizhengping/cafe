@@ -1,5 +1,4 @@
 import {scanLabel} from './core/scan.mjs';
-import {webClipProfile} from './core/webclip.mjs';
 
 const $ = id => document.getElementById(id);
 const form = $('entry');
@@ -927,26 +926,6 @@ $('library-toggle').onclick = () => {
 $('new-entry').onclick = () => openRecord();
 $('library-search').oninput = renderLibrary;
 $('library-filter').onchange = renderLibrary;
-$('install-open').onclick = () => {
-  if (location.protocol === 'https:') $('address').value = location.href;
-  $('install').showModal();
-};
-$('install-close').onclick = () => $('install').close();
-$('profile').addEventListener('submit', event => {
-  event.preventDefault();
-  try {
-    const xml = webClipProfile($('address').value);
-    const url = URL.createObjectURL(new Blob([xml], {type: 'application/x-apple-aspen-config'}));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'doudang.mobileconfig';
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 30000);
-    $('profile-error').textContent = '';
-  } catch {
-    $('profile-error').textContent = '请输入 iPhone 可以打开的 HTTPS 网址。';
-  }
-});
 renderLibrary();
 if (records.length) showLibrary(true, false);
 else if (readDraft(null)) openRecord();
