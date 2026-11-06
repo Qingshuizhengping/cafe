@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#edf2ea">
+<title>豆档 · 咖啡豆录入</title>
+<link rel="stylesheet" href="./preview.css">
+<script type="module" src="./preview.mjs"></script>
+</head>
+<body>
+<header><div class="shell bar"><a href="./" class="brand">豆档</a><div><button id="library-toggle" type="button">我的豆库 <span id="count">0</span></button><button id="install-open" type="button">安装到 iPhone</button></div></div></header>
+<main class="shell">
+<section id="editor">
+<h1>添加咖啡豆</h1>
+<p class="intro">拍下包装标签，核对识别结果后保存。</p>
+<div class="layout">
+<aside class="capture">
+<div class="viewfinder">
+<svg viewBox="0 0 310 170" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path opacity=".55" d="M45 48V24h24m172 0h24v24m0 74v24h-24m-172 0H45v-24"/><rect x="107" y="43" width="96" height="84" rx="5"/><path d="M122 59h66m-66 15h44m-44 22h63m-63 14h38"/><path stroke="#dbe793" d="M36 84h238"/></svg>
+<img id="photo" alt="待识别的豆袋标签" hidden>
+</div>
+<button id="camera-open" class="primary" type="button">拍摄豆袋</button>
+<button id="gallery-open" class="quiet" type="button">从相册选图</button>
+<input id="camera" type="file" accept="image/*" capture="environment" hidden>
+<input id="gallery" type="file" accept="image/*" hidden>
+<p id="scan-status" role="status">让包装文字填满画面，避开反光。</p>
+<details id="raw" hidden><summary>查看识别原文</summary><pre id="raw-text"></pre></details>
+</aside>
+<form id="entry">
+<div id="fields"></div>
+<footer><p id="save-status" role="status"></p><button class="primary" type="submit">保存豆档</button></footer>
+</form>
+</div>
+</section>
+<section id="library" hidden>
+<h1>我的豆库</h1><button class="primary" id="new-entry" type="button">添加咖啡豆</button><div id="entries"></div>
+</section>
+</main>
+<dialog id="install"><form id="profile">
+<h2>安装到 iPhone</h2>
+<p>输入部署后的 HTTPS 网址。在 iPhone 的 Safari 下载描述文件，再到「设置 → 已下载描述文件」安装。</p>
+<label for="address">Web App 网址</label><input type="url" id="address" placeholder="https://" required>
+<p id="profile-error" role="status"></p>
+<div class="dialog-actions"><button type="button" id="install-close">关闭</button><button class="primary" type="submit">下载描述文件</button></div>
+</form></dialog>
+</body></html>
+
