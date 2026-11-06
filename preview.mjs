@@ -263,13 +263,31 @@ function beanAge(date, now) {
 }
 
 function beanMetric(label, value) {
-  const metric = document.createElement('div');
-  const term = document.createElement('dt');
-  const amount = document.createElement('dd');
-  term.textContent = label;
-  amount.append(value);
-  metric.append(term, amount);
+  const metric = document.createElement('span');
+  if (label) {
+    const description = document.createElement('span');
+    description.className = 'sr-only';
+    description.textContent = label;
+    metric.append(description);
+  }
+  metric.append(value);
   return metric;
+}
+
+function beanFieldAction(record, field, text) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'bean-field-action';
+  button.textContent = text;
+  button.setAttribute('aria-label', text + ' · ' + record.values.name);
+  button.onclick = () => {
+    openRecord(record);
+    const input = $(field);
+    const group = input.closest('details');
+    if (group) group.open = true;
+    input.focus();
+  };
+  return button;
 }
 
 function renderLibrary() {
@@ -309,49 +327,32 @@ function renderLibrary() {
       media.setAttribute('aria-hidden', 'true');
       media.textContent = Array.from(values.name.trim())[0] ?? '豆';
     }
-    const identity = document.createElement('span');
-    const title = document.createElement('strong');
-    title.textContent = values.name;
-    const detail = document.createElement('small');
-    detail.textContent = [values.roaster, values.origin, readDraft(record.id) ? '有草稿' : ''].filter(Boolean).join(' · ');
-    identity.append(title);
-    if (detail.textContent) identity.append(detail);
-    button.append(media, identity);
+    const brand = values.roaster?.trim();
+    const name = values.name.trim();
+    button.textContent = brand && !name.toLowerCase().startsWith(brand.toLowerCase()) ? brand + ' ' + name : name;
     button.onclick = () => openRecord(record);
     const remaining = Number(values.remaining);
     const weight = Number(values.weight);
-    const stock = document.createElement('div');
-    stock.className = 'bean-stock';
-    const caption = document.createElement('span');
-    caption.textContent = remaining > 0 ? '库存余量' : '已用完';
-    const amount = document.createElement('strong');
-    amount.textContent = formatGrams.format(remaining);
-    const capacity = document.createElement('span');
-    capacity.textContent = ' / ' + formatGrams.format(weight) + ' g';
-    const numbers = document.createElement('div');
-    numbers.append(amount, capacity);
-    const meter = document.createElement('progress');
-    meter.max = weight;
-    meter.value = remaining;
-    meter.setAttribute('aria-label', '剩余库存比例');
-    stock.append(caption, numbers, meter);
-    const metrics = document.createElement('dl');
+    const stock = formatGrams.format(remaining) + '/' + formatGrams.format(weight) + ' 克';
+    const metrics = document.createElement('div');
     metrics.className = 'bean-metrics';
     const price = values.price != null && values.price !== '' && weight > 0
-      ? (Number(values.price) / weight).toFixed(2) + ' 元/g' : '未填价格';
+      ? (Number(values.price) / weight).toFixed(2) + ' 元/克'
+      : beanFieldAction(record, 'price', '补填价格');
     const age = beanAge(values.roastDate, now);
-    let ageValue = age === null ? document.createElement('button') : age + ' 天';
-    if (age === null) {
-      ageValue.type = 'button';
-      ageValue.className = 'bean-date-action';
-      ageValue.textContent = values.roastDate ? '核对烘焙日期' : '补填烘焙日期';
-      ageValue.setAttribute('aria-label', ageValue.textContent + ' · ' + values.name);
-      ageValue.onclick = () => {
-        openRecord(record);
-        $('roastDate').focus();
-      };
+    const ageValue = age === null
+      ? beanFieldAction(record, 'roastDate', values.roastDate ? '核对烘焙日期' : '补填烘焙日期')
+      : '养豆 ' + age + ' 天';
+    metrics.append(beanMetric('', ageValue), beanMetric('剩余及总重量 ', stock), beanMetric('单克价 ', price));
+    const identity = document.createElement('div');
+    identity.className = 'bean-identity';
+    identity.append(button, metrics);
+    const context = [values.origin, remaining === 0 ? '已用完' : '', readDraft(record.id) ? '有草稿' : ''].filter(Boolean);
+    if (context.length) {
+      const detail = document.createElement('small');
+      detail.textContent = context.join(' · ');
+      identity.append(detail);
     }
-    metrics.append(beanMetric('养豆天数', ageValue), beanMetric('单克价', price));
     const deduct = document.createElement('button');
     deduct.className = 'deduct-button';
     deduct.type = 'button';
@@ -368,7 +369,7 @@ function renderLibrary() {
       updateDeductPreview();
       $('deduct').showModal();
     };
-    row.append(button, stock, metrics, deduct);
+    row.append(media, identity, deduct);
     $('entries').append(row);
   }
 }
