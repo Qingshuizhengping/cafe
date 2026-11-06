@@ -74,3 +74,9 @@ dialog input{border-color:var(--rule);margin-top:4px}
 #deduct-preview{font-weight:650}
 #deduct-preview:empty{margin:0}
 @media(max-width:690px){.capture .viewfinder{height:94px}.capture .viewfinder svg{max-height:94px}.capture .viewfinder:has(img:not([hidden])){height:148px}.record-row{gap:8px}}
+.review-panel{border:1px solid var(--rule);border-radius:var(--radius);background:var(--surface);padding:14px 16px;margin-bottom:12px}
+.review-panel h2,.review-panel p{margin:0 0 6px}
+.review-panel button,#discard-draft{text-decoration:underline;text-underline-offset:.2em}
+#ocr-fields{display:flex;flex-wrap:wrap;gap:0 4px}
+.capture #cancel-scan:hover{background:#36594b}
+@media(max-width:360px){.field{grid-template-columns:minmax(0,1fr);gap:2px;padding-block:8px}.field input,.field select,.field textarea{padding-inline:4px}}

@@ -25,10 +25,22 @@
 <input id="camera" type="file" accept="image/*" capture="environment" hidden>
 <input id="gallery" type="file" accept="image/*" hidden>
 <p id="scan-status" role="status">让包装文字填满画面，避开反光。</p>
+<button id="cancel-scan" class="quiet" type="button" hidden>停止识别，手动录入</button>
 <details id="raw" hidden><summary>查看识别原文</summary><pre id="raw-text"></pre></details>
 </aside>
 <form id="entry">
+<section id="ocr-review" class="review-panel" aria-labelledby="ocr-heading" hidden>
+<h2 id="ocr-heading">核对识别结果</h2>
+<p id="ocr-progress" role="status"></p><div id="ocr-fields"></div>
+</section>
+<section id="stock-conflict" class="review-panel" aria-labelledby="stock-conflict-title" hidden>
+<h2 id="stock-conflict-title" tabindex="-1">核对库存余量</h2>
+<p id="stock-conflict-message"></p>
+<button id="use-stock" type="button">采用当前库存</button>
+<button id="confirm-stock" type="button">确认新余量</button>
+</section>
 <div id="fields"></div>
+<button id="discard-draft" type="button" hidden>丢弃草稿</button>
 <footer><p id="save-status" role="status"></p><button class="primary" type="submit">保存豆档</button></footer>
 </form>
 </div>
@@ -43,6 +55,11 @@
 <div id="entries"></div>
 </section>
 </main>
+<dialog id="discard-confirm" aria-labelledby="discard-title">
+<h2 id="discard-title">丢弃草稿？</h2>
+<p>本次未保存的修改会被清除。</p>
+<div class="dialog-actions"><button type="button" id="keep-draft" autofocus>继续编辑</button><button class="primary" type="button" id="confirm-discard">丢弃草稿</button></div>
+</dialog>
 <dialog id="deduct" aria-labelledby="deduct-title"><form id="deduct-form">
 <h2 id="deduct-title">减豆</h2>
 <p id="deduct-stock"></p>
