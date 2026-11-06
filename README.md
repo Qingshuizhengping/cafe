@@ -12,7 +12,7 @@
 
 ## iPhone 安装
 
-确认 iPhone 可以在 Safari 中打开部署后的 HTTPS 页面。点击页面上的「安装到 iPhone」，核对网址并下载描述文件，然后进入「设置 → 已下载描述文件」安装。
+在 iPhone 的 Safari 中下载[豆档描述文件](https://coffee.example.com/doudang.mobileconfig)，然后进入「设置 → 已下载描述文件」安装。
 
 也可以运行 `node make-profile.mjs <实际 HTTPS 网址>` 生成 `doudang.mobileconfig`。通过站点分发时，为描述文件设置 MIME 类型 `application/x-apple-aspen-config`。描述文件只包含可移除的全屏 Web Clip。
 
