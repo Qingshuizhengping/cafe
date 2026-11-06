@@ -95,8 +95,6 @@ let records = [];
 let deducting;
 let stockConflict;
 let scanController;
-let visionProvider;
-let visionCode = '';
 let review = {};
 
 function readRecords() {
@@ -184,14 +182,13 @@ function openRecord(record) {
   setCapture(!record);
   $('remaining').setCustomValidity('');
   $('save-status').textContent = draft ? '已恢复上次未保存的草稿。' : '';
-  $('scan-status').textContent = '让包装文字填满画面，避开反光。';
+  $('scan-status').textContent = '拍照或选图后，照片会发送给 GLM 识别。';
   $('raw').hidden = true;
   clearConflicts();
   photo.hidden = true;
   photo.removeAttribute('src');
   if (objectUrl) URL.revokeObjectURL(objectUrl);
   objectUrl = undefined;
-  updateVisionButton();
   for (const label of form.querySelectorAll('small')) label.hidden = true;
   for (const details of form.querySelectorAll('.optional-fields')) details.open = false;
   for (const [name, value] of Object.entries(draft?.values ?? record?.values ?? {})) {
@@ -552,11 +549,6 @@ function setScanBusy(value) {
   for (const id of ['camera-open', 'gallery-open', 'manual-entry', 'library-toggle']) $(id).disabled = value;
   form.querySelector('[type=submit]').disabled = value;
   $('cancel-scan').hidden = !value;
-  updateVisionButton();
-}
-
-function updateVisionButton() {
-  $('ai-scan').hidden = !visionProvider || !objectUrl || busy;
 }
 
 function applyRecognition(fields) {
@@ -579,66 +571,22 @@ function applyRecognition(fields) {
   saveDraft();
 }
 
-fetch('./api/vision')
-  .then(response => response.ok ? response.json() : null)
-  .then(config => {
-    if (!config?.enabled || typeof config.provider !== 'string') return;
-    visionProvider = config.provider;
-    updateVisionButton();
-  }).catch(() => {});
-
-$('ai-scan').onclick = () => {
-  $('ai-code').value = visionCode;
-  $('ai-disclosure').textContent = '当前豆袋照片会发送给视觉模型服务 ' + visionProvider + '。识别结果可逐项核对。';
-  $('ai-dialog').showModal();
-};
-$('ai-close').onclick = () => $('ai-dialog').close();
-$('ai-form').onsubmit = async event => {
-  event.preventDefault();
-  if (busy || !objectUrl) return;
-  const code = $('ai-code').value.trim();
-  $('ai-code').value = '';
-  $('ai-dialog').close();
-  const controller = new AbortController();
-  scanController = controller;
-  setScanBusy(true);
-  $('scan-status').textContent = '正在识别豆袋照片…';
-  try {
-    await photo.decode();
-    const scale = Math.min(1, 1600 / Math.max(photo.naturalWidth, photo.naturalHeight));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(photo.naturalWidth * scale));
-    canvas.height = Math.max(1, Math.round(photo.naturalHeight * scale));
-    canvas.getContext('2d').drawImage(photo, 0, 0, canvas.width, canvas.height);
-    const image = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
-    if (controller.signal.aborted) return;
-    if (!image) throw new Error('Unable to encode image');
-    const response = await fetch('./api/vision', {
-      method: 'POST', headers: {Authorization: 'Bearer ' + code}, body: image,
-      signal: controller.signal,
-    });
-    if (controller.signal.aborted) return;
-    if (response.status === 401) {
-      visionCode = '';
-      $('scan-status').textContent = '访问码不正确，请重新输入。';
-      return;
-    }
-    if (!response.ok) throw new Error('Vision unavailable');
-    const {fields} = await response.json();
-    if (controller.signal.aborted) return;
-    visionCode = code;
-    applyRecognition(fields);
-    $('scan-status').textContent = Object.keys(fields).length
-      ? 'AI 识别完成，请核对填入的字段。' : 'AI 未读到清晰字段，可重拍或手动填写。';
-  } catch {
-    if (!controller.signal.aborted) $('scan-status').textContent = 'AI 识别暂时失败，可以重试或继续手动填写。';
-  } finally {
-    if (scanController === controller) {
-      scanController = undefined;
-      setScanBusy(false);
-    }
-  }
-};
+async function recognizeWithGlm(signal) {
+  await photo.decode();
+  if (signal.aborted) return {};
+  const scale = Math.min(1, 1600 / Math.max(photo.naturalWidth, photo.naturalHeight));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(photo.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(photo.naturalHeight * scale));
+  canvas.getContext('2d').drawImage(photo, 0, 0, canvas.width, canvas.height);
+  const image = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+  if (!image) throw new Error('Unable to encode image');
+  if (signal.aborted) return {};
+  const response = await fetch('./api/vision', {method: 'POST', body: image, signal});
+  if (!response.ok) throw new Error('GLM recognition unavailable');
+  const {fields} = await response.json();
+  return fields;
+}
 
 for (const id of ['camera', 'gallery']) {
   $(id).addEventListener('change', async event => {
@@ -653,8 +601,21 @@ for (const id of ['camera', 'gallery']) {
     objectUrl = URL.createObjectURL(file);
     photo.src = objectUrl;
     photo.hidden = false;
-    $('scan-status').textContent = '正在加载中英文识别组件…';
+    $('scan-status').textContent = 'GLM 正在识别豆袋…';
     try {
+      let glmFields;
+      try {
+        glmFields = await recognizeWithGlm(controller.signal);
+      } catch {
+        // Local OCR also works when the model endpoint is unavailable.
+      }
+      if (controller.signal.aborted) return;
+      if (glmFields && Object.keys(glmFields).length) {
+        applyRecognition(glmFields);
+        $('scan-status').textContent = 'GLM 已识别并填写字段，请核对后保存。';
+        return;
+      }
+      $('scan-status').textContent = 'GLM 未返回可用结果，正在转用本地 OCR…';
       const {default: {createWorker}} = await import('https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/tesseract.esm.min.js');
       if (controller.signal.aborted) return;
       const {text, fields} = await scanLabel(file, createWorker, progress => {
