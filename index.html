@@ -20,13 +20,13 @@
 <div class="viewfinder">
 <svg viewBox="0 0 310 170" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path opacity=".55" d="M45 48V24h24m172 0h24v24m0 74v24h-24m-172 0H45v-24"/><rect x="107" y="43" width="96" height="84" rx="5"/><path d="M122 59h66m-66 15h44m-44 22h63m-63 14h38"/><path stroke="#dbe793" d="M36 84h238"/></svg>
 </div>
-<button id="camera-open" class="primary" type="button">拍摄豆袋</button>
-<div class="capture-actions"><button id="gallery-open" class="quiet" type="button">从相册选图</button><button id="manual-entry" class="quiet" type="button">手动录入</button></div>
-<button id="cover-open" class="quiet" type="button">仅添加豆袋图</button>
+<p class="capture-note" id="recognition-note">拍照或选图识别会将照片发送给 GLM。</p>
+<button id="camera-open" class="primary" type="button" aria-describedby="recognition-note">拍照识别</button>
+<div class="capture-actions"><button id="gallery-open" class="quiet" type="button" aria-describedby="recognition-note">选图识别</button><button id="cover-open" class="quiet" type="button">仅保存封面</button><button id="manual-entry" class="quiet" type="button">手动录入</button></div>
 <input id="cover-file" type="file" accept="image/*" hidden>
 <input id="camera" type="file" accept="image/*" capture="environment" hidden>
 <input id="gallery" type="file" accept="image/*" hidden>
-<p id="scan-status" role="status">拍照或选图后，照片会发送给 GLM 识别。</p>
+<p id="scan-status" role="status"></p>
 <button id="cancel-scan" class="quiet" type="button" hidden>停止识别，手动录入</button>
 <details id="raw" hidden><summary>查看识别原文</summary><pre id="raw-text"></pre></details>
 </aside>
@@ -57,6 +57,11 @@
 <div id="entries"></div>
 </section>
 </main>
+<dialog id="deleted-editor" aria-labelledby="deleted-editor-title" aria-describedby="deleted-editor-note">
+<h2 id="deleted-editor-title">这条豆档已被删除</h2>
+<p id="deleted-editor-note">可以返回豆库，或将当前内容另存为一条新的豆档。</p>
+<div class="dialog-actions"><button id="deleted-editor-back" type="button" autofocus>返回豆库</button><button id="save-as-new" class="primary" type="submit" form="entry">另存为新豆档</button></div>
+</dialog>
 <dialog id="delete-bean" aria-labelledby="delete-bean-title" aria-describedby="delete-bean-message">
 <h2 id="delete-bean-title">删除豆档？</h2>
 <p id="delete-bean-message"></p>

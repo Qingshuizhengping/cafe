@@ -45,11 +45,13 @@ footer button{flex-shrink:0}
 .bean-card{position:relative;display:grid;grid-template-columns:84px minmax(0,1fr) auto;align-items:center;gap:16px;min-width:0;padding:14px 16px;border:1px solid var(--rule);border-radius:var(--radius);background:var(--surface);touch-action:pan-y pinch-zoom;transform:translateX(var(--drag-offset,0px));transition:transform .2s ease-out}
 .bean-row.is-open .bean-card{transform:translateX(var(--drag-offset,calc(-1 * var(--action-width))))}
 .bean-row.is-dragging .bean-card{transition:none;user-select:none}
-.bean-actions{position:absolute;inset-block:0;right:0;width:var(--action-width);display:flex;align-items:center;gap:6px;padding:0 2px 0 8px;visibility:hidden}
+.bean-actions{position:absolute;inset-block:0;right:0;width:var(--action-width);display:flex;flex-direction:column;justify-content:center;gap:5px;padding:0 2px 0 8px;visibility:hidden}
 .bean-row:is(.is-open,.is-dragging) .bean-actions{visibility:visible}
-.bean-actions button{flex:1;min-height:48px;padding-inline:6px;border-radius:12px;font-size:14px;font-weight:650;white-space:nowrap}
-.bean-actions button:first-child{background:var(--green);color:white}
-.bean-actions button:first-child:hover{background:#2e5142}
+.bean-action-name{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere;font-size:13px;font-weight:700;line-height:1.25}
+.bean-action-buttons{display:flex;gap:6px}
+.bean-action-buttons button{flex:1;min-height:44px;padding-inline:6px;border-radius:12px;font-size:14px;font-weight:650;white-space:nowrap}
+.bean-action-buttons button:first-child{background:var(--green);color:white}
+.bean-action-buttons button:first-child:hover{background:#2e5142}
 .danger-button{background:#b4232b;color:#fff;font-weight:650}
 .danger-button:hover{background:#911b22}
 .bean-controls{display:flex;align-items:center;gap:4px}
@@ -64,6 +66,7 @@ footer button{flex-shrink:0}
 .bean-metrics{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 9px;color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums}
 .bean-metrics > span{white-space:nowrap}
 .bean-metrics > span + span::before{content:'·';margin-inline-end:9px}
+.bean-remaining{color:var(--green);font-size:1.16em;font-weight:750}
 .bean-identity small{display:block;margin-top:3px;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
 .bean-field-action{min-height:44px;margin-block:-8px;padding:8px 0;text-decoration:underline;text-underline-offset:.2em}
 .deduct-button{border:1px solid var(--rule);font-weight:650;white-space:nowrap}
@@ -80,6 +83,8 @@ dialog input{border-color:var(--rule);margin-top:4px}
 .layout.form-only{grid-template-columns:minmax(0,600px)}
 #show-capture{margin:0 0 12px;border:1px solid var(--rule)}
 .capture-actions{display:flex;justify-content:center;flex-wrap:wrap}
+.capture .capture-note{margin:0 0 8px}
+#scan-status:empty{display:none}
 .optional-fields{margin-bottom:12px;border:1px solid var(--rule);border-radius:var(--radius);background:var(--surface)}
 .optional-fields summary{cursor:pointer;padding:12px 16px;font-weight:650}
 .optional-fields fieldset{margin:0;border:0;padding-top:0;background:transparent}
@@ -95,9 +100,19 @@ dialog input{border-color:var(--rule);margin-top:4px}
 #recent-dose{margin-top:8px}
 #deduct-preview{font-weight:650}
 #deduct-preview:empty{margin:0}
-@media(max-width:560px){.bean-card{grid-template-columns:64px minmax(0,1fr);gap:8px 11px;padding:12px}.bean-cover{align-self:start}.record{font-size:17px}.bean-metrics{font-size:13px;gap:2px 6px}.bean-metrics > span + span::before{margin-inline-end:6px}.bean-controls{grid-column:2;justify-self:end}}
+@media(max-width:560px){
+  .bean-card{grid-template-columns:64px minmax(0,1fr) auto;gap:2px 9px;padding:10px 12px}
+  .bean-cover{grid-column:1;grid-row:1/4}
+  .bean-identity{display:contents}
+  .record{grid-column:2;grid-row:1;font-size:17px}
+  .bean-metrics{grid-column:2/-1;grid-row:2;font-size:13px;gap:2px 6px}
+  .bean-metrics > span + span::before{margin-inline-end:6px}
+  .bean-identity small{grid-column:2/-1;grid-row:3;margin:0}
+  .bean-controls{grid-column:3;grid-row:1;gap:0}
+  .bean-controls .deduct-button{padding-inline:7px;font-size:13px}
+}
 @media(max-width:690px){.capture .viewfinder{height:94px}.capture .viewfinder svg{max-height:94px}.capture .viewfinder:has(img:not([hidden])){height:148px}}
-@media(max-width:365px){.bean-card{grid-template-columns:54px minmax(0,1fr);column-gap:9px}}
+@media(max-width:365px){.bean-card{grid-template-columns:54px minmax(0,1fr) auto}}
 .review-panel{border:1px solid var(--rule);border-radius:var(--radius);background:var(--surface);padding:14px 16px;margin-bottom:12px}
 .review-panel h2,.review-panel p{margin:0 0 6px}
 .review-panel button,#discard-draft{text-decoration:underline;text-underline-offset:.2em}

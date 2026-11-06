@@ -92,6 +92,7 @@ let editing = null;
 let originalValues = {};
 let objectUrl;
 let pendingCover;
+let originalCover;
 let busy = false;
 let records = [];
 let deducting;
@@ -186,10 +187,11 @@ function openRecord(record) {
   setCapture(!record);
   $('remaining').setCustomValidity('');
   $('save-status').textContent = draft ? '已恢复上次未保存的草稿。' : '';
-  $('scan-status').textContent = '拍照或选图后，照片会发送给 GLM 识别。';
+  $('scan-status').textContent = '';
   $('raw').hidden = true;
   clearConflicts();
-  const cover = pendingCover ?? record?.cover;
+  originalCover = record?.cover;
+  const cover = pendingCover ?? originalCover;
   photo.hidden = !cover;
   if (cover) photo.src = cover;
   else photo.removeAttribute('src');
@@ -318,7 +320,15 @@ function beanActionRow(card, controls, record) {
   remove.type = 'button';
   remove.className = 'danger-button';
   remove.textContent = '删除';
-  actions.append(pin, remove);
+  const actionName = document.createElement('div');
+  actionName.className = 'bean-action-name';
+  actionName.textContent = card.querySelector('.record').textContent;
+  pin.setAttribute('aria-label', pin.textContent + ' · ' + record.values.name);
+  remove.setAttribute('aria-label', '删除 · ' + record.values.name);
+  const actionButtons = document.createElement('div');
+  actionButtons.className = 'bean-action-buttons';
+  actionButtons.append(pin, remove);
+  actions.append(actionName, actionButtons);
   controls.append(more);
   wrapper.append(actions, card);
 
@@ -471,7 +481,11 @@ function renderLibrary() {
     button.onclick = () => openRecord(record);
     const remaining = Number(values.remaining);
     const weight = Number(values.weight);
-    const stock = formatGrams.format(remaining) + '/' + formatGrams.format(weight) + ' 克';
+    const stock = document.createElement('span');
+    const stockAmount = document.createElement('strong');
+    stockAmount.className = 'bean-remaining';
+    stockAmount.textContent = formatGrams.format(remaining);
+    stock.append(stockAmount, '/' + formatGrams.format(weight) + ' 克');
     const metrics = document.createElement('div');
     metrics.className = 'bean-metrics';
     const price = values.price != null && values.price !== '' && weight > 0
@@ -692,6 +706,19 @@ form.addEventListener('input', event => {
   updatePrice();
   saveDraft();
 });
+$('deleted-editor-back').onclick = () => {
+  try {
+    records = readRecords();
+  } catch {
+    $('deleted-editor').close();
+    $('save-status').textContent = '暂时无法读取豆库，请重试。';
+    return;
+  }
+  $('deleted-editor').close();
+  renderLibrary();
+  showLibrary(true);
+};
+
 form.addEventListener('submit', async event => {
   event.preventDefault();
   if (busy) return;
@@ -715,15 +742,21 @@ form.addEventListener('submit', async event => {
     $('name').focus();
     return;
   }
-  const id = editing ?? Date.now().toString(36) + Math.random().toString(36).slice(2);
   const submit = event.submitter;
-  if (submit.disabled) return;
+  const saveButton = form.querySelector('[type=submit]');
+  if (saveButton.disabled || submit.disabled) return;
+  const asNew = submit.id === 'save-as-new';
+  const sourceId = editing;
+  const id = (asNew ? null : sourceId) ?? Date.now().toString(36) + Math.random().toString(36).slice(2);
+  const deleted = new Error('Bean was deleted');
   submit.disabled = true;
+  saveButton.disabled = true;
   $('library-toggle').disabled = true;
   try {
     await updateRecords(current => {
       const existing = current.find(record => record.id === id);
-      if (!existing) return [{id, values, cover: pendingCover}, ...current];
+      if (asNew || !sourceId) return [{id, values, cover: pendingCover ?? originalCover}, ...current];
+      if (!existing) throw deleted;
       const changes = Object.fromEntries(Object.entries(values).filter(([name, value]) => value !== (originalValues[name] ?? '')));
       if ('remaining' in changes && existing.values.remaining !== originalValues.remaining && changes.remaining !== existing.values.remaining) {
         showStockConflict(existing.values.remaining);
@@ -740,14 +773,20 @@ form.addEventListener('submit', async event => {
           ? existing.undoDeduction : null,
       } : record);
     });
-    try { localStorage.removeItem(draftId()); } catch {}
+    try { localStorage.removeItem(draftId(sourceId)); } catch {}
+    if ($('deleted-editor').open) $('deleted-editor').close();
     $('library-status').textContent = '已保存豆档。';
     renderLibrary();
     showLibrary(true);
   } catch (error) {
-    $('save-status').textContent = error instanceof DOMException ? '保存失败，请检查浏览器的储存权限。' : error.message;
+    if (error === deleted) $('deleted-editor').showModal();
+    else {
+      if ($('deleted-editor').open) $('deleted-editor').close();
+      $('save-status').textContent = error instanceof DOMException ? '保存失败，请检查浏览器的储存权限。' : error.message;
+    }
   } finally {
     submit.disabled = false;
+    saveButton.disabled = false;
     $('library-toggle').disabled = false;
   }
 });
