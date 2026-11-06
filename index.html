@@ -17,7 +17,16 @@
 <feDisplacementMap in="SourceGraphic" in2="refraction-map" scale="16" xChannelSelector="R" yChannelSelector="G"/>
 </filter></defs>
 </svg>
-<header><div class="shell bar"><a href="./" class="brand">豆档</a><div><button id="library-toggle" type="button">我的豆库 <span id="count">0</span></button><button id="install-open" type="button">安装到 iPhone</button></div></div></header>
+<header class="site-header">
+<nav class="shell bar" aria-label="豆档导航">
+<span id="brand" class="brand" hidden>豆档</span>
+<button id="library-toggle" type="button">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg>
+我的豆库
+</button>
+<button id="install-open" type="button">安装到 iPhone</button>
+</nav>
+</header>
 <main class="shell">
 <section id="editor">
 <h1 id="editor-title" tabindex="-1">添加咖啡豆</h1>
@@ -28,9 +37,15 @@
 <div class="viewfinder">
 <svg viewBox="0 0 310 170" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path opacity=".55" d="M45 48V24h24m172 0h24v24m0 74v24h-24m-172 0H45v-24"/><rect x="107" y="43" width="96" height="84" rx="5"/><path d="M122 59h66m-66 15h44m-44 22h63m-63 14h38"/><path class="scan-line" d="M36 84h238"/></svg>
 </div>
-<p class="capture-note" id="recognition-note">拍照或选图识别会将照片发送给 GLM。</p>
+<div class="capture-actions">
 <button id="camera-open" class="primary" type="button" aria-describedby="recognition-note">拍照识别</button>
-<div class="capture-actions"><button id="gallery-open" class="quiet" type="button" aria-describedby="recognition-note">选图识别</button><button id="cover-open" class="quiet" type="button">仅保存封面</button><button id="manual-entry" class="quiet" type="button">手动录入</button></div>
+<button id="gallery-open" class="quiet" type="button" aria-describedby="recognition-note">相册识别</button>
+</div>
+<p class="capture-note" id="recognition-note">用于识别的照片会发送给 GLM。</p>
+<div class="capture-alternatives">
+<button id="manual-entry" class="quiet" type="button">手动录入</button>
+<button id="cover-open" class="quiet" type="button">仅保存封面</button>
+</div>
 <input id="cover-file" type="file" accept="image/*" hidden>
 <input id="camera" type="file" accept="image/*" capture="environment" hidden>
 <input id="gallery" type="file" accept="image/*" hidden>
@@ -56,7 +71,10 @@
 </div>
 </section>
 <section id="library" hidden>
-<h1 id="library-title" tabindex="-1">我的豆库</h1><button class="primary" id="new-entry" type="button">添加咖啡豆</button>
+<div class="library-heading">
+<div><h1 id="library-title" tabindex="-1">我的豆库</h1><p class="library-count">共 <span id="count">0</span> 份豆档</p></div>
+<button class="primary" id="new-entry" type="button">添加咖啡豆</button>
+</div>
 <div class="library-feedback"><p id="library-status" role="status"></p><button id="undo-deduct" type="button" hidden>撤销减豆</button></div>
 <div id="library-tools" class="library-tools" hidden>
 <label for="library-search" class="sr-only">搜索豆库</label><input id="library-search" type="search" placeholder="搜索名称、产地或烘焙商">

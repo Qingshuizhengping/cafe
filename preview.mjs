@@ -129,8 +129,8 @@ function updatePrice() {
 function showLibrary(visible, focus = true) {
   $('editor').hidden = visible;
   $('library').hidden = !visible;
-  if (visible) $('library-toggle').setAttribute('aria-current', 'page');
-  else $('library-toggle').removeAttribute('aria-current');
+  $('brand').hidden = !visible;
+  $('library-toggle').hidden = visible;
   window.scrollTo(0, 0);
   if (focus) $(visible ? 'library-title' : 'editor-title').focus({preventScroll: true});
 }
