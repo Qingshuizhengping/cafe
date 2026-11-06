@@ -95,6 +95,8 @@ let records = [];
 let deducting;
 let stockConflict;
 let scanController;
+let visionProvider;
+let visionCode = '';
 let review = {};
 
 function readRecords() {
@@ -189,6 +191,7 @@ function openRecord(record) {
   photo.removeAttribute('src');
   if (objectUrl) URL.revokeObjectURL(objectUrl);
   objectUrl = undefined;
+  updateVisionButton();
   for (const label of form.querySelectorAll('small')) label.hidden = true;
   for (const details of form.querySelectorAll('.optional-fields')) details.open = false;
   for (const [name, value] of Object.entries(draft?.values ?? record?.values ?? {})) {
@@ -549,7 +552,93 @@ function setScanBusy(value) {
   for (const id of ['camera-open', 'gallery-open', 'manual-entry', 'library-toggle']) $(id).disabled = value;
   form.querySelector('[type=submit]').disabled = value;
   $('cancel-scan').hidden = !value;
+  updateVisionButton();
 }
+
+function updateVisionButton() {
+  $('ai-scan').hidden = !visionProvider || !objectUrl || busy;
+}
+
+function applyRecognition(fields) {
+  for (const [name, value] of Object.entries(fields)) {
+    if (!fieldLabels.has(name) || typeof value !== 'string' || !value) continue;
+    const input = $(name);
+    input.closest('.field').querySelector('.ocr-conflict')?.remove();
+    review[name] = {suggested: value, pending: Boolean(input.value && input.value !== value)};
+    if (!input.value) {
+      input.value = value;
+      $(name + '-source').hidden = false;
+    } else if (review[name].pending) {
+      showConflict(input, value);
+      const group = input.closest('details');
+      if (group) group.open = true;
+    }
+  }
+  updatePrice();
+  renderReview();
+  saveDraft();
+}
+
+fetch('./api/vision')
+  .then(response => response.ok ? response.json() : null)
+  .then(config => {
+    if (!config?.enabled || typeof config.provider !== 'string') return;
+    visionProvider = config.provider;
+    updateVisionButton();
+  }).catch(() => {});
+
+$('ai-scan').onclick = () => {
+  $('ai-code').value = visionCode;
+  $('ai-disclosure').textContent = '当前豆袋照片会发送给视觉模型服务 ' + visionProvider + '。识别结果可逐项核对。';
+  $('ai-dialog').showModal();
+};
+$('ai-close').onclick = () => $('ai-dialog').close();
+$('ai-form').onsubmit = async event => {
+  event.preventDefault();
+  if (busy || !objectUrl) return;
+  const code = $('ai-code').value.trim();
+  $('ai-code').value = '';
+  $('ai-dialog').close();
+  const controller = new AbortController();
+  scanController = controller;
+  setScanBusy(true);
+  $('scan-status').textContent = '正在识别豆袋照片…';
+  try {
+    await photo.decode();
+    const scale = Math.min(1, 1600 / Math.max(photo.naturalWidth, photo.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(photo.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(photo.naturalHeight * scale));
+    canvas.getContext('2d').drawImage(photo, 0, 0, canvas.width, canvas.height);
+    const image = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+    if (controller.signal.aborted) return;
+    if (!image) throw new Error('Unable to encode image');
+    const response = await fetch('./api/vision', {
+      method: 'POST', headers: {Authorization: 'Bearer ' + code}, body: image,
+      signal: controller.signal,
+    });
+    if (controller.signal.aborted) return;
+    if (response.status === 401) {
+      visionCode = '';
+      $('scan-status').textContent = '访问码不正确，请重新输入。';
+      return;
+    }
+    if (!response.ok) throw new Error('Vision unavailable');
+    const {fields} = await response.json();
+    if (controller.signal.aborted) return;
+    visionCode = code;
+    applyRecognition(fields);
+    $('scan-status').textContent = Object.keys(fields).length
+      ? 'AI 识别完成，请核对填入的字段。' : 'AI 未读到清晰字段，可重拍或手动填写。';
+  } catch {
+    if (!controller.signal.aborted) $('scan-status').textContent = 'AI 识别暂时失败，可以重试或继续手动填写。';
+  } finally {
+    if (scanController === controller) {
+      scanController = undefined;
+      setScanBusy(false);
+    }
+  }
+};
 
 for (const id of ['camera', 'gallery']) {
   $(id).addEventListener('change', async event => {
@@ -574,27 +663,8 @@ for (const id of ['camera', 'gallery']) {
       if (controller.signal.aborted) return;
       $('raw-text').textContent = text;
       $('raw').hidden = !text.trim();
-      let filled = 0;
-      let conflicts = 0;
-      for (const [name, value] of Object.entries(fields)) {
-        const input = $(name);
-        input.closest('.field').querySelector('.ocr-conflict')?.remove();
-        review[name] = {suggested: value, pending: Boolean(input.value && input.value !== value)};
-        if (!input.value) {
-          input.value = value;
-          $(name + '-source').hidden = false;
-          filled++;
-        } else if (input.value !== value) {
-          showConflict(input, value);
-          const group = input.closest('details');
-          if (group) group.open = true;
-          conflicts++;
-        }
-      }
-      updatePrice();
-      renderReview();
-      saveDraft();
-      $('scan-status').textContent = filled || conflicts
+      applyRecognition(fields);
+      $('scan-status').textContent = Object.keys(fields).length
         ? '识别完成。可在「核对识别结果」中查看字段。'
         : '未找到可自动填写的字段。可以查看原文、重拍或手动输入。';
     } catch {
