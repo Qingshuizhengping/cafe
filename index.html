@@ -9,6 +9,12 @@
 <script type="module" src="./preview.mjs"></script>
 </head>
 <body>
+<svg class="glass-filter-defs" width="0" height="0" aria-hidden="true" focusable="false">
+<defs><filter id="bean-glass-refraction" color-interpolation-filters="sRGB">
+<feTurbulence type="fractalNoise" baseFrequency=".012 .028" numOctaves="1" seed="8" result="refraction-map"/>
+<feDisplacementMap in="SourceGraphic" in2="refraction-map" scale="16" xChannelSelector="R" yChannelSelector="G"/>
+</filter></defs>
+</svg>
 <header><div class="shell bar"><a href="./" class="brand">豆档</a><div><button id="library-toggle" type="button">我的豆库 <span id="count">0</span></button><button id="install-open" type="button">安装到 iPhone</button></div></div></header>
 <main class="shell">
 <section id="editor">
