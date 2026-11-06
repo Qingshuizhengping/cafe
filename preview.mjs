@@ -90,6 +90,7 @@ const draftKey = 'doudang-draft:';
 let editing = null;
 let originalValues = {};
 let objectUrl;
+let pendingCover;
 let busy = false;
 let records = [];
 let deducting;
@@ -123,13 +124,13 @@ function updatePrice() {
   $('unitPrice').value = mass > 0 && Number.isFinite(price) ? (price / mass).toFixed(2) : '—';
 }
 
-function showLibrary(visible) {
+function showLibrary(visible, focus = true) {
   $('editor').hidden = visible;
   $('library').hidden = !visible;
   if (visible) $('library-toggle').setAttribute('aria-current', 'page');
   else $('library-toggle').removeAttribute('aria-current');
   window.scrollTo(0, 0);
-  $(visible ? 'library-title' : 'editor-title').focus({preventScroll: true});
+  if (focus) $(visible ? 'library-title' : 'editor-title').focus({preventScroll: true});
 }
 
 function setCapture(visible) {
@@ -157,9 +158,10 @@ function formValues() {
 function saveDraft() {
   const values = formValues();
   try {
-    const dirty = Object.keys(review).length || Object.keys(values).some(name => values[name] !== (originalValues[name] ?? ''));
+    const dirty = pendingCover !== undefined || Object.keys(review).length ||
+      Object.keys(values).some(name => values[name] !== (originalValues[name] ?? ''));
     if (dirty) {
-      localStorage.setItem(draftId(), JSON.stringify({values, originalValues, review}));
+      localStorage.setItem(draftId(), JSON.stringify({values, originalValues, review, cover: pendingCover}));
     } else {
       localStorage.removeItem(draftId());
     }
@@ -172,6 +174,7 @@ function saveDraft() {
 function openRecord(record) {
   editing = record?.id ?? null;
   const draft = readDraft(editing);
+  pendingCover = draft?.cover;
   originalValues = draft?.originalValues ?? record?.values ?? {};
   review = draft?.review ?? {};
   $('discard-draft').hidden = !draft;
@@ -185,8 +188,10 @@ function openRecord(record) {
   $('scan-status').textContent = '拍照或选图后，照片会发送给 GLM 识别。';
   $('raw').hidden = true;
   clearConflicts();
-  photo.hidden = true;
-  photo.removeAttribute('src');
+  const cover = pendingCover ?? record?.cover;
+  photo.hidden = !cover;
+  if (cover) photo.src = cover;
+  else photo.removeAttribute('src');
   if (objectUrl) URL.revokeObjectURL(objectUrl);
   objectUrl = undefined;
   for (const label of form.querySelectorAll('small')) label.hidden = true;
@@ -245,6 +250,27 @@ $('confirm-discard').onclick = () => {
   }
 };
 
+const formatGrams = new Intl.NumberFormat('zh-CN', {maximumFractionDigits: 2, useGrouping: false});
+
+function beanAge(date, now) {
+  if (!date) return '未填日期';
+  const roastDay = Date.parse(date);
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const days = (today - roastDay) / 86400000;
+  if (!Number.isFinite(days)) return '未填日期';
+  return days < 0 ? '日期待核对' : days + ' 天';
+}
+
+function beanMetric(label, value) {
+  const metric = document.createElement('div');
+  const term = document.createElement('dt');
+  const amount = document.createElement('dd');
+  term.textContent = label;
+  amount.textContent = value;
+  metric.append(term, amount);
+  return metric;
+}
+
 function renderLibrary() {
   const undo = records.find(record => record.undoDeduction);
   $('undo-deduct').hidden = !undo;
@@ -260,22 +286,59 @@ function renderLibrary() {
     return (!filter || available === (filter === 'available')) &&
       [values.name, values.origin, values.roaster].some(value => (value ?? '').toLowerCase().includes(query));
   });
+  $('entries').classList.toggle('bean-grid', visibleRecords.length > 0);
   if (!visibleRecords.length) $('entries').textContent = records.length ? '没有符合条件的咖啡豆。' : '还没有保存的咖啡豆。';
+  const now = new Date();
   for (const record of visibleRecords) {
-    const row = document.createElement('div');
-    row.className = 'record-row';
+    const {values} = record;
+    const row = document.createElement('article');
+    row.className = 'bean-card';
     const button = document.createElement('button');
     button.className = 'record';
     button.type = 'button';
-    button.textContent = record.values.name;
-    const detail = document.createElement('span');
-    detail.textContent = [record.values.roaster, record.values.origin, readDraft(record.id) ? '有未保存草稿' : ''].filter(Boolean).join(' · ');
-    if (detail.textContent) button.append(detail);
+    const media = document.createElement('span');
+    media.className = 'bean-cover';
+    if (record.cover) {
+      const image = document.createElement('img');
+      image.src = record.cover;
+      image.alt = '';
+      image.loading = 'lazy';
+      media.append(image);
+    } else {
+      media.setAttribute('aria-hidden', 'true');
+      media.textContent = Array.from(values.name.trim())[0] ?? '豆';
+    }
+    const identity = document.createElement('span');
+    const title = document.createElement('strong');
+    title.textContent = values.name;
+    const detail = document.createElement('small');
+    detail.textContent = [values.roaster, values.origin, readDraft(record.id) ? '有草稿' : ''].filter(Boolean).join(' · ');
+    identity.append(title);
+    if (detail.textContent) identity.append(detail);
+    button.append(media, identity);
     button.onclick = () => openRecord(record);
-    const stock = document.createElement('span');
-    stock.className = 'record-stock';
-    stock.textContent = Number(record.values.remaining) > 0 ? record.values.remaining + '\u00a0g' : '已用完';
-    stock.setAttribute('aria-label', '剩余 ' + record.values.remaining + ' 克');
+    const remaining = Number(values.remaining);
+    const weight = Number(values.weight);
+    const stock = document.createElement('div');
+    stock.className = 'bean-stock';
+    const caption = document.createElement('span');
+    caption.textContent = remaining > 0 ? '库存余量' : '已用完';
+    const amount = document.createElement('strong');
+    amount.textContent = formatGrams.format(remaining);
+    const capacity = document.createElement('span');
+    capacity.textContent = ' / ' + formatGrams.format(weight) + ' g';
+    const numbers = document.createElement('div');
+    numbers.append(amount, capacity);
+    const meter = document.createElement('progress');
+    meter.max = weight;
+    meter.value = remaining;
+    meter.setAttribute('aria-label', '剩余库存比例');
+    stock.append(caption, numbers, meter);
+    const metrics = document.createElement('dl');
+    metrics.className = 'bean-metrics';
+    const price = values.price != null && values.price !== '' && weight > 0
+      ? (Number(values.price) / weight).toFixed(2) + ' 元/g' : '未填价格';
+    metrics.append(beanMetric('养豆天数', beanAge(values.roastDate, now)), beanMetric('单克价', price));
     const deduct = document.createElement('button');
     deduct.className = 'deduct-button';
     deduct.type = 'button';
@@ -292,7 +355,7 @@ function renderLibrary() {
       updateDeductPreview();
       $('deduct').showModal();
     };
-    row.append(button, stock, deduct);
+    row.append(button, stock, metrics, deduct);
     $('entries').append(row);
   }
 }
@@ -505,7 +568,7 @@ form.addEventListener('submit', async event => {
   try {
     await updateRecords(current => {
       const existing = current.find(record => record.id === id);
-      if (!existing) return [{id, values}, ...current];
+      if (!existing) return [{id, values, cover: pendingCover}, ...current];
       const changes = Object.fromEntries(Object.entries(values).filter(([name, value]) => value !== (originalValues[name] ?? '')));
       if ('remaining' in changes && existing.values.remaining !== originalValues.remaining && changes.remaining !== existing.values.remaining) {
         showStockConflict(existing.values.remaining);
@@ -517,7 +580,7 @@ form.addEventListener('submit', async event => {
         throw new Error('当前余量超过你填写的总重量，请核对后再保存。');
       }
       return current.map(record => record.id === id ? {
-        ...existing, values: merged,
+        ...existing, values: merged, cover: pendingCover ?? existing.cover,
         undoDeduction: merged.remaining === existing.values.remaining && Number(merged.weight) >= Number(existing.undoDeduction?.previous)
           ? existing.undoDeduction : null,
       } : record);
@@ -536,6 +599,7 @@ form.addEventListener('submit', async event => {
 
 $('camera-open').onclick = () => $('camera').click();
 $('gallery-open').onclick = () => $('gallery').click();
+$('cover-open').onclick = () => $('cover-file').click();
 $('cancel-scan').onclick = () => {
   scanController.abort();
   scanController = undefined;
@@ -546,7 +610,7 @@ $('cancel-scan').onclick = () => {
 
 function setScanBusy(value) {
   busy = value;
-  for (const id of ['camera-open', 'gallery-open', 'manual-entry', 'library-toggle']) $(id).disabled = value;
+  for (const id of ['camera-open', 'gallery-open', 'cover-open', 'manual-entry', 'library-toggle']) $(id).disabled = value;
   form.querySelector('[type=submit]').disabled = value;
   $('cancel-scan').hidden = !value;
 }
@@ -571,14 +635,33 @@ function applyRecognition(fields) {
   saveDraft();
 }
 
-async function recognizeWithGlm(signal) {
-  await photo.decode();
-  if (signal.aborted) return {};
-  const scale = Math.min(1, 1600 / Math.max(photo.naturalWidth, photo.naturalHeight));
+function photoCanvas(maxSide) {
+  const scale = Math.min(1, maxSide / Math.max(photo.naturalWidth, photo.naturalHeight));
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.round(photo.naturalWidth * scale));
   canvas.height = Math.max(1, Math.round(photo.naturalHeight * scale));
-  canvas.getContext('2d').drawImage(photo, 0, 0, canvas.width, canvas.height);
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#fff';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(photo, 0, 0, canvas.width, canvas.height);
+  return canvas;
+}
+
+function saveCover() {
+  let maxSide = 320;
+  while (maxSide >= 80) {
+    const cover = photoCanvas(maxSide).toDataURL('image/jpeg', 0.8);
+    if (cover.startsWith('data:image/jpeg;base64,') && cover.length <= 28000) {
+      pendingCover = cover;
+      saveDraft();
+      return true;
+    }
+    maxSide = Math.floor(maxSide * 0.7);
+  }
+}
+
+async function recognizeWithGlm(signal) {
+  const canvas = photoCanvas(1600);
   const image = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
   if (!image) throw new Error('Unable to encode image');
   if (signal.aborted) return {};
@@ -588,7 +671,7 @@ async function recognizeWithGlm(signal) {
   return fields;
 }
 
-for (const id of ['camera', 'gallery']) {
+for (const id of ['camera', 'gallery', 'cover-file']) {
   $(id).addEventListener('change', async event => {
     const file = event.target.files[0];
     event.target.value = '';
@@ -601,8 +684,16 @@ for (const id of ['camera', 'gallery']) {
     objectUrl = URL.createObjectURL(file);
     photo.src = objectUrl;
     photo.hidden = false;
-    $('scan-status').textContent = 'GLM 正在识别豆袋…';
+    const coverOnly = id === 'cover-file';
+    $('scan-status').textContent = coverOnly ? '正在处理豆袋照片…' : 'GLM 正在识别豆袋…';
     try {
+      await photo.decode();
+      if (controller.signal.aborted) return;
+      const coverSaved = saveCover();
+      if (coverOnly) {
+        $('scan-status').textContent = coverSaved ? '已添加豆袋图，保存后会显示在磁贴上。' : '无法生成豆袋缩略图，请换一张照片。';
+        return;
+      }
       let glmFields;
       try {
         glmFields = await recognizeWithGlm(controller.signal);
@@ -666,6 +757,6 @@ $('profile').addEventListener('submit', event => {
   }
 });
 renderLibrary();
-if (records.length) showLibrary(true);
+if (records.length) showLibrary(true, false);
 else if (readDraft(null)) openRecord();
 
