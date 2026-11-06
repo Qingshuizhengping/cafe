@@ -40,8 +40,12 @@ footer{display:flex;align-items:center;justify-content:space-between;gap:8px;pos
 footer p{margin:0;font-size:14px;color:var(--muted)}
 footer button{flex-shrink:0}
 #entries{margin-top:22px}
-.record{display:block;text-align:left;width:100%;border-top:1px solid var(--rule);border-radius:0;padding:14px 0;overflow-wrap:anywhere}
+.record-row{display:flex;align-items:center;gap:12px;border-top:1px solid var(--rule)}
+.record{display:block;text-align:left;flex:1;min-width:0;padding:14px 8px;overflow-wrap:anywhere}
 .record span{display:block;font-size:14px;color:var(--muted)}
+.deduct-button{flex:none;border:1px solid var(--rule);font-weight:600}
+.deduct-button:disabled{cursor:default}
+#library-status:empty,#deduct-error:empty{margin:0}
 dialog{width:min(440px,calc(100% - 28px));border:1px solid var(--rule);border-radius:var(--radius);padding:22px;color:var(--ink);background:var(--surface)}
 dialog::backdrop{background:#14251db0}
 dialog input{border-color:var(--rule);margin-top:4px}

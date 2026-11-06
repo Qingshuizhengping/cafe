@@ -3,6 +3,10 @@ import {webClipProfile} from './core/webclip.mjs';
 
 const $ = id => document.getElementById(id);
 const form = $('entry');
+const photo = document.createElement('img');
+photo.alt = '待识别的豆袋标签';
+photo.hidden = true;
+document.querySelector('.viewfinder').append(photo);
 const groups = {
   基本信息: [
     ['name', '名称', 'text', '咖啡豆名称', true],
@@ -65,9 +69,24 @@ let editing = null;
 let objectUrl;
 let busy = false;
 let records = [];
-try {
+let deducting = null;
+
+function readRecords() {
   const stored = JSON.parse(localStorage.getItem(key));
-  if (Array.isArray(stored)) records = stored;
+  return Array.isArray(stored) ? stored : [];
+}
+
+function updateRecords(update) {
+  const write = () => {
+    const next = update(readRecords());
+    localStorage.setItem(key, JSON.stringify(next));
+    records = next;
+  };
+  return navigator.locks ? navigator.locks.request(key, write) : write();
+}
+
+try {
+  records = readRecords();
 } catch {
   $('save-status').textContent = '暂时无法读取豆库。';
 }
@@ -91,8 +110,8 @@ function openRecord(record) {
   $('save-status').textContent = '';
   $('scan-status').textContent = '让包装文字填满画面，避开反光。';
   $('raw').hidden = true;
-  $('photo').hidden = true;
-  $('photo').removeAttribute('src');
+  photo.hidden = true;
+  photo.removeAttribute('src');
   if (objectUrl) URL.revokeObjectURL(objectUrl);
   objectUrl = undefined;
   for (const label of form.querySelectorAll('small')) label.hidden = true;
@@ -108,6 +127,8 @@ function renderLibrary() {
   $('entries').replaceChildren();
   if (!records.length) $('entries').textContent = '还没有保存的咖啡豆。';
   for (const record of records) {
+    const row = document.createElement('div');
+    row.className = 'record-row';
     const button = document.createElement('button');
     button.className = 'record';
     button.type = 'button';
@@ -116,9 +137,55 @@ function renderLibrary() {
     detail.textContent = [record.values.roaster, record.values.origin, '剩余 ' + record.values.remaining + ' g'].filter(Boolean).join(' · ');
     button.append(detail);
     button.onclick = () => openRecord(record);
-    $('entries').append(button);
+    const deduct = document.createElement('button');
+    deduct.className = 'deduct-button';
+    deduct.type = 'button';
+    deduct.textContent = '减豆';
+    deduct.setAttribute('aria-label', '减豆：' + record.values.name);
+    deduct.disabled = !(Number(record.values.remaining) > 0);
+    deduct.onclick = () => {
+      deducting = record.id;
+      $('deduct-form').reset();
+      $('deduct-error').textContent = '';
+      $('deduct-stock').textContent = record.values.name + ' · 剩余 ' + record.values.remaining + ' g';
+      $('deduct').showModal();
+    };
+    row.append(button, deduct);
+    $('entries').append(row);
   }
 }
+
+$('deduct-cancel').onclick = () => $('deduct').close();
+$('deduct-grams').oninput = () => { $('deduct-error').textContent = ''; };
+$('deduct-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const submit = event.submitter;
+  if (submit.disabled) return;
+  submit.disabled = true;
+  const id = deducting;
+  const grams = $('deduct-grams').valueAsNumber;
+  let updated;
+  try {
+    await updateRecords(current => {
+      const record = current.find(item => item.id === id);
+      if (!record) throw new Error('找不到这条记录，请刷新豆库后重试。');
+      const available = Math.round(Number(record.values.remaining) * 100);
+      const used = Math.round(grams * 100);
+      if (!Number.isSafeInteger(available) || !Number.isSafeInteger(used) || used < 1 || used > available) {
+        throw new Error('请输入大于 0 且不超过当前余量（' + record.values.remaining + ' g）的克数。');
+      }
+      updated = {...record, values: {...record.values, remaining: String((available - used) / 100)}};
+      return current.map(item => item.id === id ? updated : item);
+    });
+    $('deduct').close();
+    renderLibrary();
+    $('library-status').textContent = updated.values.name + '已扣减 ' + grams + ' g，剩余 ' + updated.values.remaining + ' g。';
+  } catch (error) {
+    $('deduct-error').textContent = error instanceof DOMException ? '扣减保存失败，请重试。' : error.message;
+  } finally {
+    submit.disabled = false;
+  }
+});
 
 form.addEventListener('input', event => {
   const source = $(event.target.name + '-source');
@@ -126,7 +193,7 @@ form.addEventListener('input', event => {
   $('remaining').setCustomValidity('');
   updatePrice();
 });
-form.addEventListener('submit', event => {
+form.addEventListener('submit', async event => {
   event.preventDefault();
   if (busy) return;
   if ($('remaining').valueAsNumber > $('weight').valueAsNumber) {
@@ -141,14 +208,18 @@ form.addEventListener('submit', event => {
     return;
   }
   const id = editing ?? Date.now().toString(36) + Math.random().toString(36).slice(2);
-  const next = [{id, values}, ...records.filter(record => record.id !== id)];
+  const submit = event.submitter;
+  if (submit.disabled) return;
+  submit.disabled = true;
   try {
-    localStorage.setItem(key, JSON.stringify(next));
-    records = next;
+    await updateRecords(current => [{id, values}, ...current.filter(record => record.id !== id)]);
+    $('library-status').textContent = '';
     renderLibrary();
     showLibrary(true);
   } catch {
     $('save-status').textContent = '保存失败，请检查浏览器的储存权限。';
+  } finally {
+    submit.disabled = false;
   }
 });
 
@@ -165,8 +236,8 @@ for (const id of ['camera', 'gallery']) {
     $('raw').hidden = true;
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     objectUrl = URL.createObjectURL(file);
-    $('photo').src = objectUrl;
-    $('photo').hidden = false;
+    photo.src = objectUrl;
+    photo.hidden = false;
     $('scan-status').textContent = '正在加载中英文识别组件…';
     try {
       const {default: {createWorker}} = await import('https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/tesseract.esm.min.js');

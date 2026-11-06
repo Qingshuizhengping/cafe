@@ -18,7 +18,6 @@
 <aside class="capture">
 <div class="viewfinder">
 <svg viewBox="0 0 310 170" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path opacity=".55" d="M45 48V24h24m172 0h24v24m0 74v24h-24m-172 0H45v-24"/><rect x="107" y="43" width="96" height="84" rx="5"/><path d="M122 59h66m-66 15h44m-44 22h63m-63 14h38"/><path stroke="#dbe793" d="M36 84h238"/></svg>
-<img id="photo" alt="待识别的豆袋标签" hidden>
 </div>
 <button id="camera-open" class="primary" type="button">拍摄豆袋</button>
 <button id="gallery-open" class="quiet" type="button">从相册选图</button>
@@ -34,9 +33,18 @@
 </div>
 </section>
 <section id="library" hidden>
-<h1>我的豆库</h1><button class="primary" id="new-entry" type="button">添加咖啡豆</button><div id="entries"></div>
+<h1>我的豆库</h1><button class="primary" id="new-entry" type="button">添加咖啡豆</button>
+<p id="library-status" role="status"></p><div id="entries"></div>
 </section>
 </main>
+<dialog id="deduct" aria-labelledby="deduct-title"><form id="deduct-form">
+<h2 id="deduct-title">减豆</h2>
+<p id="deduct-stock"></p>
+<label for="deduct-grams">用掉的克数（g）</label>
+<input id="deduct-grams" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="例如 18" required autofocus>
+<p id="deduct-error" role="status"></p>
+<div class="dialog-actions"><button type="button" id="deduct-cancel">取消</button><button class="primary" type="submit">确认扣减</button></div>
+</form></dialog>
 <dialog id="install"><form id="profile">
 <h2>安装到 iPhone</h2>
 <p>输入部署后的 HTTPS 网址。在 iPhone 的 Safari 下载描述文件，再到「设置 → 已下载描述文件」安装。</p>
