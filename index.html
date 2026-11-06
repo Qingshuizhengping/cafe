@@ -12,15 +12,16 @@
 <header><div class="shell bar"><a href="./" class="brand">豆档</a><div><button id="library-toggle" type="button">我的豆库 <span id="count">0</span></button><button id="install-open" type="button">安装到 iPhone</button></div></div></header>
 <main class="shell">
 <section id="editor">
-<h1>添加咖啡豆</h1>
-<p class="intro">拍下包装标签，核对识别结果后保存。</p>
+<h1 id="editor-title" tabindex="-1">添加咖啡豆</h1>
+<p class="intro" id="editor-intro">拍下包装标签，核对识别结果后保存。</p>
+<button id="show-capture" type="button" aria-controls="capture" hidden>拍照补全标签</button>
 <div class="layout">
-<aside class="capture">
+<aside class="capture" id="capture">
 <div class="viewfinder">
 <svg viewBox="0 0 310 170" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path opacity=".55" d="M45 48V24h24m172 0h24v24m0 74v24h-24m-172 0H45v-24"/><rect x="107" y="43" width="96" height="84" rx="5"/><path d="M122 59h66m-66 15h44m-44 22h63m-63 14h38"/><path stroke="#dbe793" d="M36 84h238"/></svg>
 </div>
 <button id="camera-open" class="primary" type="button">拍摄豆袋</button>
-<button id="gallery-open" class="quiet" type="button">从相册选图</button>
+<div class="capture-actions"><button id="gallery-open" class="quiet" type="button">从相册选图</button><button id="manual-entry" class="quiet" type="button">手动录入</button></div>
 <input id="camera" type="file" accept="image/*" capture="environment" hidden>
 <input id="gallery" type="file" accept="image/*" hidden>
 <p id="scan-status" role="status">让包装文字填满画面，避开反光。</p>
@@ -33,8 +34,13 @@
 </div>
 </section>
 <section id="library" hidden>
-<h1>我的豆库</h1><button class="primary" id="new-entry" type="button">添加咖啡豆</button>
-<p id="library-status" role="status"></p><div id="entries"></div>
+<h1 id="library-title" tabindex="-1">我的豆库</h1><button class="primary" id="new-entry" type="button">添加咖啡豆</button>
+<div class="library-feedback"><p id="library-status" role="status"></p><button id="undo-deduct" type="button" hidden>撤销减豆</button></div>
+<div id="library-tools" class="library-tools" hidden>
+<label for="library-search" class="sr-only">搜索豆库</label><input id="library-search" type="search" placeholder="搜索名称、产地或烘焙商">
+<label for="library-filter" class="sr-only">库存状态</label><select id="library-filter"><option value="">全部库存</option><option value="available">还有余量</option><option value="empty">已用完</option></select>
+</div>
+<div id="entries"></div>
 </section>
 </main>
 <dialog id="deduct" aria-labelledby="deduct-title"><form id="deduct-form">
@@ -42,11 +48,13 @@
 <p id="deduct-stock"></p>
 <label for="deduct-grams">用掉的克数（g）</label>
 <input id="deduct-grams" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="例如 18" required autofocus>
+<button id="recent-dose" type="button" hidden></button>
+<p id="deduct-preview" role="status"></p>
 <p id="deduct-error" role="status"></p>
-<div class="dialog-actions"><button type="button" id="deduct-cancel">取消</button><button class="primary" type="submit">确认扣减</button></div>
+<div class="dialog-actions"><button type="button" id="deduct-cancel">取消</button><button class="primary" type="submit">确认减豆</button></div>
 </form></dialog>
-<dialog id="install"><form id="profile">
-<h2>安装到 iPhone</h2>
+<dialog id="install" aria-labelledby="install-title"><form id="profile">
+<h2 id="install-title">安装到 iPhone</h2>
 <p>输入部署后的 HTTPS 网址。在 iPhone 的 Safari 下载描述文件，再到「设置 → 已下载描述文件」安装。</p>
 <label for="address">Web App 网址</label><input type="url" id="address" placeholder="https://" required>
 <p id="profile-error" role="status"></p>
