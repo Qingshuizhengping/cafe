@@ -57,6 +57,12 @@
 <div id="entries"></div>
 </section>
 </main>
+<dialog id="delete-bean" aria-labelledby="delete-bean-title" aria-describedby="delete-bean-message">
+<h2 id="delete-bean-title">删除豆档？</h2>
+<p id="delete-bean-message"></p>
+<p id="delete-bean-error" role="status"></p>
+<div class="dialog-actions"><button id="cancel-delete-bean" type="button" autofocus>取消</button><button id="confirm-delete-bean" class="danger-button" type="button">确认删除</button></div>
+</dialog>
 <dialog id="discard-confirm" aria-labelledby="discard-title">
 <h2 id="discard-title">丢弃草稿？</h2>
 <p>本次未保存的修改会被清除。</p>

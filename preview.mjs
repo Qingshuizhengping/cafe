@@ -290,7 +290,143 @@ function beanFieldAction(record, field, text) {
   return button;
 }
 
+let closeBeanActions;
+let beanToDelete;
+
+document.addEventListener('pointerdown', event => {
+  if (!event.target.closest('.bean-row, dialog')) closeBeanActions?.();
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && !document.querySelector('dialog[open]')) closeBeanActions?.(true);
+});
+
+function beanActionRow(card, controls, record) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'bean-row';
+  const actions = document.createElement('div');
+  actions.className = 'bean-actions';
+  actions.inert = true;
+  const more = document.createElement('button');
+  more.type = 'button';
+  more.className = 'bean-more';
+  more.textContent = '⋯';
+  more.setAttribute('aria-label', '更多操作 · ' + record.values.name);
+  const pin = document.createElement('button');
+  pin.type = 'button';
+  pin.textContent = record.pinnedAt ? '取消置顶' : '置顶';
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'danger-button';
+  remove.textContent = '删除';
+  actions.append(pin, remove);
+  controls.append(more);
+  wrapper.append(actions, card);
+
+  function setOpen(open) {
+    if (open && closeBeanActions !== close) closeBeanActions?.();
+    wrapper.classList.toggle('is-open', open);
+    actions.inert = !open;
+    more.setAttribute('aria-expanded', String(open));
+    closeBeanActions = open ? close : closeBeanActions === close ? undefined : closeBeanActions;
+  }
+  function close(returnFocus = false) {
+    if (returnFocus || actions.contains(document.activeElement)) more.focus();
+    setOpen(false);
+  }
+  setOpen(false);
+  more.onclick = () => {
+    if (actions.inert) {
+      setOpen(true);
+      pin.focus();
+    } else close();
+  };
+  pin.onclick = async () => {
+    pin.disabled = true;
+    const pinnedAt = record.pinnedAt ? null : Date.now();
+    try {
+      await updateRecords(current => current.map(bean => bean.id === record.id ? {...bean, pinnedAt} : bean));
+      renderLibrary();
+      $('library-title').focus({preventScroll: true});
+      $('library-status').textContent = (pinnedAt ? '已置顶 ' : '已取消置顶 ') + record.values.name;
+    } catch {
+      pin.disabled = false;
+      $('library-status').textContent = '置顶状态未保存，请重试。';
+    }
+  };
+  remove.onclick = () => {
+    beanToDelete = record;
+    $('delete-bean-message').textContent = '删除「' + record.values.name + '」及其未保存草稿？';
+    $('delete-bean-error').textContent = '';
+    $('delete-bean').showModal();
+  };
+
+  let gesture;
+  let suppressClickUntil = 0;
+  card.addEventListener('pointerdown', event => {
+    if (!event.isPrimary || event.button !== 0 || event.pointerType === 'mouse') return;
+    if (closeBeanActions !== close) closeBeanActions?.();
+    gesture = {id: event.pointerId, x: event.clientX, y: event.clientY, start: actions.inert ? 0 : actions.offsetWidth};
+  });
+  card.addEventListener('pointermove', event => {
+    if (gesture?.id !== event.pointerId) return;
+    const x = event.clientX - gesture.x;
+    const y = event.clientY - gesture.y;
+    if (!gesture.dragging) {
+      if (Math.abs(y) > 9 && Math.abs(y) > Math.abs(x)) {
+        gesture = undefined;
+        return;
+      }
+      if (Math.abs(x) < 10 || Math.abs(x) <= Math.abs(y)) return;
+      gesture.dragging = true;
+      card.setPointerCapture(event.pointerId);
+      wrapper.classList.add('is-dragging');
+    }
+    gesture.offset = Math.min(actions.offsetWidth, Math.max(0, gesture.start + x));
+    card.style.setProperty('--drag-offset', gesture.offset + 'px');
+  });
+  function endSwipe(event) {
+    if (gesture?.id !== event.pointerId) return;
+    if (gesture.dragging) {
+      suppressClickUntil = Date.now() + 400;
+      setOpen(event.type === 'pointerup' ? gesture.offset >= actions.offsetWidth * 0.35 : gesture.start > 0);
+      wrapper.classList.remove('is-dragging');
+      card.style.removeProperty('--drag-offset');
+    }
+    gesture = undefined;
+  }
+  card.addEventListener('pointerup', endSwipe);
+  card.addEventListener('pointercancel', endSwipe);
+  card.addEventListener('click', event => {
+    if (event.detail && Date.now() < suppressClickUntil) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  }, true);
+  return wrapper;
+}
+
+$('cancel-delete-bean').onclick = () => $('delete-bean').close();
+$('confirm-delete-bean').onclick = async () => {
+  const submit = $('confirm-delete-bean');
+  if (submit.disabled || !beanToDelete) return;
+  submit.disabled = true;
+  const record = beanToDelete;
+  try {
+    await updateRecords(current => current.filter(bean => bean.id !== record.id));
+    try { localStorage.removeItem(draftId(record.id)); } catch {}
+    $('delete-bean').close();
+    renderLibrary();
+    $('library-title').focus({preventScroll: true});
+    $('library-status').textContent = '已删除 ' + record.values.name;
+  } catch {
+    $('delete-bean-error').textContent = '删除失败，请重试。';
+  } finally {
+    submit.disabled = false;
+  }
+};
+
 function renderLibrary() {
+  closeBeanActions = undefined;
   const undo = records.find(record => record.undoDeduction);
   $('undo-deduct').hidden = !undo;
   if (undo) $('undo-deduct').textContent = '撤销减豆 · ' + undo.values.name;
@@ -304,7 +440,7 @@ function renderLibrary() {
     const available = Number(values.remaining) > 0;
     return (!filter || available === (filter === 'available')) &&
       [values.name, values.origin, values.roaster].some(value => (value ?? '').toLowerCase().includes(query));
-  });
+  }).sort((a, b) => (b.pinnedAt ?? 0) - (a.pinnedAt ?? 0));
   $('entries').classList.toggle('bean-grid', visibleRecords.length > 0);
   if (!visibleRecords.length) $('entries').textContent = records.length ? '没有符合条件的咖啡豆。' : '还没有保存的咖啡豆。';
   const now = new Date();
@@ -347,7 +483,7 @@ function renderLibrary() {
     const identity = document.createElement('div');
     identity.className = 'bean-identity';
     identity.append(button, metrics);
-    const context = [values.origin, remaining === 0 ? '已用完' : '', readDraft(record.id) ? '有草稿' : ''].filter(Boolean);
+    const context = [record.pinnedAt ? '已置顶' : '', values.origin, remaining === 0 ? '已用完' : '', readDraft(record.id) ? '有草稿' : ''].filter(Boolean);
     if (context.length) {
       const detail = document.createElement('small');
       detail.textContent = context.join(' · ');
@@ -369,8 +505,11 @@ function renderLibrary() {
       updateDeductPreview();
       $('deduct').showModal();
     };
-    row.append(media, identity, deduct);
-    $('entries').append(row);
+    const controls = document.createElement('div');
+    controls.className = 'bean-controls';
+    controls.append(deduct);
+    row.append(media, identity, controls);
+    $('entries').append(beanActionRow(row, controls, record));
   }
 }
 
