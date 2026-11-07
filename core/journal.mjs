@@ -1,3 +1,5 @@
+import {normalizeComponents} from './recognition.mjs';
+
 export const units = value => Math.round(Number(value) * 100);
 export const uid = () => crypto.randomUUID();
 
@@ -113,7 +115,7 @@ export function consumptionEvents(records) {
 }
 
 const VALUE_FIELDS = ['name','weight','remaining','roastDate','price','roaster','roast','origin','farm','variety',
-  'altitude','process','flavors','rest','freshDays','storage','rating','notes','category','group'];
+  'altitude','process','flavors','rest','freshDays','storage','rating','notes','category','group','country','region','station','batch','components'];
 
 function validImage(value) {
   if (value == null || value === '') return undefined;
@@ -139,6 +141,7 @@ function validateRecord(raw) {
   numeric(values.weight, {min: .01});
   numeric(values.remaining, {max: Number(values.weight)});
   if (values.price) numeric(values.price);
+  if (values.components) values.components = JSON.stringify(normalizeComponents(values.components));
   for (const key of ['rest','freshDays','rating']) if (values[key] !== '' && values[key] != null) numeric(values[key], {max: key === 'rating' ? 5 : 36500});
   const history = (raw.history ?? []).map(event => {
     if (!event || !['deduction','adjustment','tasting','brew'].includes(event.type) || typeof event.id !== 'string') {

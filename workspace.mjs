@@ -1,5 +1,6 @@
 import {units, uid, localDate, roastAge, flavorState, unitCost, undoStock,
-  saveTasting, deleteTasting, consumptionEvents, readBackup, mergeBackup} from './core/journal.mjs';
+  saveTasting, deleteTasting, consumptionEvents, readBackup, mergeBackup} from './core/journal.mjs?v=5';
+import {normalizeComponents} from './core/recognition.mjs';
 
 const $ = id => document.getElementById(id);
 const number = new Intl.NumberFormat('zh-CN', {maximumFractionDigits: 2});
@@ -190,6 +191,12 @@ export function createWorkspace({getRecords, mutate, openEditor, openLibrary, fi
     fields.replaceChildren();
     for (const [key, label] of fieldLabels) {
       if (['remaining','weight','unitPrice'].includes(key)) continue;
+      if (key === 'components') {
+        for (const [index, component] of normalizeComponents(values.components).entries()) {
+          definition(fields, '成分 ' + (index + 1), Object.entries(component).map(([key,value]) => ({percentage:'比例',origin:'产地',country:'产国',region:'产区',farm:'庄园',station:'处理站',process:'处理法',variety:'品种',altitude:'海拔',batch:'批次'}[key] ?? key) + ' ' + value + (key === 'percentage' ? '%' : '')).join(' · '));
+        }
+        continue;
+      }
       definition(fields, label, values[key]);
     }
     definition(fields, '参考赏味窗口', '烘焙后 ' + (values.rest || '7') + '–' + (values.freshDays || '60') + ' 天，可在编辑资料中调整');

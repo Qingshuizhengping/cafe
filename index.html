@@ -7,8 +7,8 @@
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f2f2">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#141414">
 <title>豆档 · 咖啡豆录入</title>
-<link rel="stylesheet" href="./preview.css?v=4">
-<script type="module" src="./preview.mjs?v=4"></script>
+<link rel="stylesheet" href="./preview.css?v=5">
+<script type="module" src="./preview.mjs?v=5"></script>
 </head>
 <body>
 <header class="site-header">
@@ -69,7 +69,7 @@
 <section id="library" hidden>
 <div class="library-heading">
 <div><h1 id="library-title" tabindex="-1">我的豆库</h1><p class="library-count">共 <span id="count">0</span> 份豆档 · 共 <span id="stock-total">0</span>&nbsp;g 库存</p></div>
-<button class="primary" id="new-entry" type="button">添加咖啡豆</button>
+<div class="library-entry-actions"><button class="primary" id="new-entry" type="button">添加咖啡豆</button><button class="secondary" id="batch-open" type="button">批量 / JSON 导入</button></div>
 </div>
 <div class="library-feedback"><p id="library-status" role="status"></p><button id="undo-deduct" type="button" hidden>撤销减豆</button></div>
 <div id="library-tools" class="library-tools" hidden>
@@ -123,6 +123,22 @@
 <p class="supporting">资料保存在当前浏览器。更换设备或清理浏览器数据前，请导出备份。旧豆档会从本次更新后开始积累消耗与品鉴历史。</p>
 </section>
 </main>
+<dialog id="camera-dialog" aria-labelledby="camera-title">
+<div class="import-job-header"><h2 id="camera-title">拍摄豆袋标签</h2><button id="camera-close" type="button">关闭</button></div>
+<video id="camera-preview" autoplay muted playsinline aria-label="相机实时预览"></video>
+<p id="camera-error" class="supporting" role="status"></p>
+<label id="camera-zoom-label" hidden>缩放<input id="camera-zoom" type="range" aria-label="相机缩放"></label>
+<div class="action-row"><button id="camera-shutter" class="primary" type="button">拍照并识别</button><button id="camera-torch" class="secondary" type="button" aria-pressed="false" hidden>闪光灯</button><button id="camera-native" type="button">使用系统相机</button></div>
+</dialog>
+<dialog id="import-dialog" aria-labelledby="import-title">
+<div class="import-job-header"><div><h2 id="import-title">导入咖啡豆</h2><p class="supporting">每批最多 5 张图片，识别后核对再入库。</p></div><button id="import-close" type="button">关闭</button></div>
+<div class="action-row"><button id="batch-choose" class="primary" type="button">从相册多选</button><button id="batch-camera" class="secondary" type="button">拍照添加</button><button id="import-stop" type="button" hidden>停止本批识别</button><button id="import-reset" type="button">清空本批</button></div>
+<p class="supporting">识别照片会发送给 GLM。每张图单独显示结果，失败的图片可重试。</p>
+<input id="batch-files" type="file" accept="image/*" multiple hidden>
+<details class="json-import"><summary>粘贴 JSON 导入</summary><div class="workspace-form"><button id="import-clipboard" class="secondary" type="button">读取剪贴板</button><label>咖啡豆 JSON<textarea id="import-json" rows="5" placeholder='单个对象或对象数组，例如 {"name":"咖啡豆名称","weight":250}'></textarea></label><button id="import-json-parse" class="secondary" type="button">解析 JSON</button></div></details>
+<div id="import-jobs"></div><div id="import-candidates"></div>
+<div class="import-footer"><p id="import-feedback" class="feedback" role="status"></p><button id="import-save" class="primary" type="button" disabled>选择要导入的豆</button></div>
+</dialog>
 <nav id="app-nav" class="app-nav" aria-label="主要功能" hidden>
 <button id="nav-library" type="button" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M4 10h16M10 10v10"/></svg>豆库</button>
 <button id="nav-brewing" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 8h12v8a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4Zm12 1h2a3 3 0 0 1 0 6h-2M8 3v2m5-2v2"/></svg><span id="brew-nav-label">冲煮</span></button>

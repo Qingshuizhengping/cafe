@@ -1,6 +1,8 @@
 import {scanLabel} from './core/scan.mjs';
-import {recordStock, flavorState, unitCost, undoStock} from './core/journal.mjs';
-import {createWorkspace} from './workspace.mjs?v=4';
+import {recordStock, flavorState, unitCost, undoStock, readBackup} from './core/journal.mjs?v=5';
+import {createWorkspace} from './workspace.mjs?v=5';
+import {createCamera, createImporter, componentEditor, recognizeFile} from './importer.mjs?v=5';
+import {normalizeComponents} from './core/recognition.mjs';
 
 const $ = id => document.getElementById(id);
 const form = $('entry');
@@ -22,7 +24,7 @@ const groups = {
   包装信息: [
     ['roaster', '烘焙商'],
     ['roast', '烘焙程度', ['极浅烘', '浅烘', '中浅烘', '中烘', '中深烘', '深烘', '极深烘']],
-    ['origin', '产地'], ['farm', '庄园'], ['variety', '豆种'],
+    ['origin', '产地'], ['country', '产国'], ['region', '产区'], ['farm', '庄园'], ['station', '处理站'], ['batch', '批次'], ['variety', '豆种'],
     ['altitude', '海拔（m）'], ['process', '处理法'], ['flavors', '风味', 'text', '用顿号分隔'],
   ],
   自用记录: [
@@ -89,6 +91,14 @@ for (const [title, fields] of Object.entries(groups)) {
   }
 }
 
+const componentGroup = document.createElement('details');
+componentGroup.className = 'optional-fields';
+componentGroup.append(document.createElement('summary'));
+componentGroup.firstChild.textContent = '拼配成分';
+const components = componentEditor(componentGroup);
+$('fields').append(componentGroup);
+fieldLabels.set('components', '拼配成分');
+
 const key = 'doudang-preview-records';
 const draftKey = 'doudang-draft:';
 let editing = null;
@@ -105,6 +115,8 @@ let stockConflict;
 let scanController;
 let review = {};
 let workspace;
+let importer;
+let pendingImportId;
 
 function readRecords() {
   const stored = JSON.parse(localStorage.getItem(key));
@@ -175,7 +187,7 @@ function saveDraft() {
     const dirty = pendingCover !== undefined || pendingBackCover !== undefined || Object.keys(review).length ||
       Object.keys(values).some(name => values[name] !== (originalValues[name] ?? ''));
     if (dirty) {
-      localStorage.setItem(draftId(), JSON.stringify({values, originalValues, review, cover: pendingCover, backCover: pendingBackCover}));
+      localStorage.setItem(draftId(), JSON.stringify({values, originalValues, review, cover: pendingCover, backCover: pendingBackCover, importId: pendingImportId}));
     } else {
       localStorage.removeItem(draftId());
     }
@@ -188,6 +200,7 @@ function saveDraft() {
 function openRecord(record) {
   editing = record?.id ?? null;
   const draft = readDraft(editing);
+  pendingImportId = record ? undefined : draft?.importId;
   pendingCover = draft?.cover;
   pendingBackCover = draft?.backCover;
   originalBackCover = record?.backCover;
@@ -216,6 +229,7 @@ function openRecord(record) {
   for (const [name, value] of Object.entries(draft?.values ?? record?.values ?? {})) {
     if (form.elements.namedItem(name)) form.elements.namedItem(name).value = value;
   }
+  components.render($('components').value);
   for (const [name, result] of Object.entries(review)) {
     if (result.pending) showConflict($(name), result.suggested);
     else if ($(name).value === result.suggested) $(name + '-source').hidden = false;
@@ -675,7 +689,7 @@ function renderReview() {
     link.textContent = fieldLabels.get(name) + (result.pending ? ' · 待核对' : '');
     link.onclick = () => {
       if (group) group.open = true;
-      input.focus();
+      if (input.id === 'components') components.focus(); else input.focus();
     };
     links.append(link);
   }
@@ -709,6 +723,7 @@ function showConflict(input, suggested) {
     review[input.name].pending = false;
     conflict.remove();
     input.value = suggested;
+    if (input.id === 'components') components.render(input.value);
     input.dispatchEvent(new Event('input', {bubbles: true}));
     $(input.name + '-source').hidden = false;
     review[input.name] = {suggested, pending: false};
@@ -736,8 +751,9 @@ $('unopened').onclick = () => {
 };
 
 form.addEventListener('invalid', event => {
-  const group = event.target.closest('details');
-  if (group) group.open = true;
+  for (let group = event.target.closest('details'); group; group = group.parentElement?.closest('details')) {
+    group.open = true;
+  }
 }, true);
 form.addEventListener('input', event => {
   const source = $(event.target.name + '-source');
@@ -782,6 +798,10 @@ form.addEventListener('submit', async event => {
     return;
   }
   const values = Object.fromEntries([...new FormData(form)].map(([name, value]) => [name, value.trim()]));
+  try {
+    const blend = normalizeComponents(values.components);
+    values.components = blend.length ? JSON.stringify(blend) : '';
+  } catch (error) { $('save-status').textContent = error.message; componentGroup.open = true; components.focus(); return; }
   const rest = values.rest === '' ? 7 : Number(values.rest);
   const end = values.freshDays === '' ? 60 : Number(values.freshDays);
   if (end < rest) { $('save-status').textContent = '赏味结束日须不早于养豆结束日。'; return; }
@@ -795,7 +815,7 @@ form.addEventListener('submit', async event => {
   if (saveButton.disabled || submit.disabled) return;
   const asNew = submit.id === 'save-as-new';
   const sourceId = editing;
-  const id = (asNew ? null : sourceId) ?? Date.now().toString(36) + Math.random().toString(36).slice(2);
+  const id = (asNew ? null : sourceId ?? pendingImportId) ?? Date.now().toString(36) + Math.random().toString(36).slice(2);
   const deleted = new Error('Bean was deleted');
   submit.disabled = true;
   saveButton.disabled = true;
@@ -803,7 +823,13 @@ form.addEventListener('submit', async event => {
   try {
     await updateRecords(current => {
       const existing = current.find(record => record.id === id);
-      if (asNew || !sourceId) return [{id, values, cover: pendingCover ?? originalCover, backCover: pendingBackCover ?? originalBackCover}, ...current];
+      if (asNew || !sourceId) {
+        if (existing && pendingImportId === id) {
+          if (Object.entries(values).every(([key,value]) => value === (existing.values[key] ?? ''))) return current;
+          throw new Error('这颗豆已从其他页面入库，请返回豆库打开它继续编辑。当前草稿已保留。');
+        }
+        return [{id, values, cover: pendingCover ?? originalCover, backCover: pendingBackCover ?? originalBackCover}, ...current];
+      }
       if (!existing) throw deleted;
       const changes = Object.fromEntries(Object.entries(values).filter(([name, value]) => value !== (originalValues[name] ?? '')));
       if ('remaining' in changes && existing.values.remaining !== originalValues.remaining && changes.remaining !== existing.values.remaining) {
@@ -824,6 +850,7 @@ form.addEventListener('submit', async event => {
     });
     try { localStorage.removeItem(draftId(sourceId)); } catch {}
     if ($('deleted-editor').open) $('deleted-editor').close();
+    importer?.markSaved(records.find(record => record.id === id));
     $('library-status').textContent = '已保存豆档。';
     renderLibrary();
     showLibrary(true);
@@ -840,7 +867,10 @@ form.addEventListener('submit', async event => {
   }
 });
 
-$('camera-open').onclick = () => $('camera').click();
+let nativeCameraCallback;
+const liveCamera = createCamera({nativeInput: $('camera'), onNative: callback => { nativeCameraCallback = callback; }});
+$('camera').addEventListener('cancel', () => { nativeCameraCallback = undefined; });
+$('camera-open').onclick = () => liveCamera.open(file => handlePhoto(file, 'camera'));
 $('gallery-open').onclick = () => $('gallery').click();
 $('cover-open').onclick = () => $('cover-file').click();
 $('back-open').onclick = () => $('back-file').click();
@@ -863,10 +893,12 @@ function applyRecognition(fields) {
   for (const [name, value] of Object.entries(fields)) {
     if (!fieldLabels.has(name) || typeof value !== 'string' || !value) continue;
     const input = $(name);
+    if (name === 'remaining' && (editing || input.value)) continue;
     input.closest('.field').querySelector('.ocr-conflict')?.remove();
     review[name] = {suggested: value, pending: Boolean(input.value && input.value !== value)};
     if (!input.value) {
       input.value = value;
+      if (name === 'components') components.render(value);
       $(name + '-source').hidden = false;
     } else if (review[name].pending) {
       showConflict(input, value);
@@ -905,21 +937,7 @@ function saveCover(back = false) {
   }
 }
 
-async function recognizeWithGlm(signal) {
-  const canvas = photoCanvas(1600);
-  const image = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
-  if (!image) throw new Error('Unable to encode image');
-  if (signal.aborted) return {};
-  const response = await fetch('./api/vision', {method: 'POST', body: image, signal});
-  if (!response.ok) throw new Error('GLM recognition unavailable');
-  const {fields} = await response.json();
-  return fields;
-}
-
-for (const id of ['camera', 'gallery', 'cover-file', 'back-file']) {
-  $(id).addEventListener('change', async event => {
-    const file = event.target.files[0];
-    event.target.value = '';
+async function handlePhoto(file, id) {
     if (!file || busy) return;
     const controller = new AbortController();
     scanController = controller;
@@ -939,15 +957,21 @@ for (const id of ['camera', 'gallery', 'cover-file', 'back-file']) {
         $('scan-status').textContent = coverSaved ? (id === 'back-file' ? '已添加背面照片，保存后可在详情查看。' : '已添加豆袋图，保存后会显示在磁贴上。') : '无法生成豆袋缩略图，请换一张照片。';
         return;
       }
-      let glmFields;
+      let result;
       try {
-        glmFields = await recognizeWithGlm(controller.signal);
+        result = await recognizeFile(file, controller.signal);
       } catch {
         // Local OCR also works when the model endpoint is unavailable.
       }
       if (controller.signal.aborted) return;
-      if (glmFields && Object.keys(glmFields).length) {
-        applyRecognition(glmFields);
+      if (result?.raw) { $('raw-text').textContent = result.raw; $('raw').hidden = false; }
+      if (result?.beans.length > 1) {
+        importer.openResults(result,file);
+        $('scan-status').textContent = '图片中识别到多颗豆，请在导入窗口分别核对。';
+        return;
+      }
+      if (result?.beans.length === 1 && Object.keys(result.beans[0].fields).length) {
+        applyRecognition(result.beans[0].fields);
         $('scan-status').textContent = 'GLM 已识别并填写字段，请核对后保存。';
         return;
       }
@@ -972,6 +996,16 @@ for (const id of ['camera', 'gallery', 'cover-file', 'back-file']) {
         setScanBusy(false);
       }
     }
+}
+for (const id of ['camera', 'gallery', 'cover-file', 'back-file']) {
+  $(id).addEventListener('change', event => {
+    const file = event.target.files[0]; event.target.value = '';
+    if (id === 'camera' && nativeCameraCallback) {
+      const callback = nativeCameraCallback; nativeCameraCallback = undefined;
+      if (file) void callback(file);
+      return;
+    }
+    void handlePhoto(file,id);
   });
 }
 $('library-toggle').onclick = () => {
@@ -988,6 +1022,27 @@ workspace = createWorkspace({
   openEditor: openRecord,
   openLibrary: () => { records = readRecords(); renderLibrary(); showLibrary(true); },
   fieldLabels,
+});
+importer = createImporter({
+  camera: liveCamera,
+  importRecords: async incoming => {
+    const validated = readBackup(JSON.stringify(incoming));
+    for (const record of validated) {
+      const start = record.values.rest === '' || record.values.rest == null ? 7 : Number(record.values.rest);
+      const end = record.values.freshDays === '' || record.values.freshDays == null ? 60 : Number(record.values.freshDays);
+      if (end < start) throw new Error('「' + record.values.name + '」的赏味结束日早于养豆期，请在完整表单中核对。');
+    }
+    await updateRecords(current => [...validated.filter(record => !current.some(existing => existing.id === record.id)), ...current]);
+    renderLibrary(); showLibrary(true);
+    return validated;
+  },
+  onImported: openRecord,
+  onReview: bean => {
+    openRecord();
+    pendingImportId = bean.id;
+    if (bean.cover) { pendingCover = bean.cover; photo.src = bean.cover; photo.hidden = false; }
+    applyRecognition(bean.fields);
+  },
 });
 window.addEventListener('storage', event => {
   if (event.key === key) {
