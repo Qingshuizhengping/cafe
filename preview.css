@@ -307,11 +307,13 @@ dialog .dialog-actions{position:sticky;bottom:-22px;background:var(--surface);pa
 .library-filters label{flex:1;min-width:80px;font-size:12px;color:var(--muted)}
 .library-filters select{display:block;min-height:36px;font-size:13px;background:var(--surface);border-color:var(--rule)}
 .library-heading>div{flex:1 1 180px;min-width:0}
+.library-heading>.library-entry-actions{flex:0 0 auto;display:flex;flex-direction:column;align-items:stretch;gap:6px}
+.library-entry-actions .secondary{border-radius:22px;font-size:13px;padding-inline:12px}
 @media(max-width:560px){
   .library-tools{grid-template-columns:repeat(2,minmax(0,1fr))}
   .library-tools input{grid-column:1/-1}
   .library-heading{align-items:flex-start}
-  .library-heading>div{flex-basis:150px}
+  .library-heading>div{flex-basis:130px}
   .stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .stat strong{font-size:20px}
   .page-heading h1{font-size:28px}
@@ -319,3 +321,34 @@ dialog .dialog-actions{position:sticky;bottom:-22px;background:var(--surface);pa
   .detail-numbers{gap:6px 10px;padding:14px 12px}
   .detail-numbers dd{font-size:14px}
 }
+#camera-dialog{width:min(520px,calc(100% - 24px))}
+#camera-preview{display:block;width:100%;aspect-ratio:3/4;max-height:52dvh;object-fit:cover;border-radius:16px;background:#171717}
+#camera-zoom-label{font-size:14px}
+#camera-zoom{accent-color:var(--ink);padding:0}
+#import-dialog{width:min(680px,calc(100% - 24px))}
+#import-dialog>.import-job-header{position:sticky;top:0;z-index:1;background:var(--surface);padding-bottom:8px}
+.import-job-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.import-job-header>div{min-width:0}
+.import-job-header h2{margin:0}
+.import-job-header strong{font-size:14px;overflow-wrap:anywhere}
+.import-job-header p{margin:4px 0}
+.import-job-header button{flex-shrink:0}
+.import-job{padding:16px 0;border-bottom:1px solid var(--rule)}
+.import-job pre{max-width:100%;font-size:12px}
+.json-import{border-block:1px solid var(--rule);padding-block:8px;margin-block:16px}
+.json-import summary,.import-job summary,.import-candidate summary{cursor:pointer;min-height:44px;align-content:center;font-size:14px}
+.import-candidate{padding:16px 0;border-bottom:1px solid var(--rule);clear:both}
+.import-candidate input{border-color:var(--rule);background:var(--surface)}
+.import-candidate .form-pair label{font-size:13px;display:grid;gap:4px;min-width:0}
+.candidate-selection{display:flex;align-items:center;gap:10px;min-height:44px;margin-bottom:8px;font-weight:650;overflow-wrap:anywhere}
+.candidate-selection input{width:20px;min-height:20px;flex:none;accent-color:var(--ink)}
+.import-cover{width:64px;height:64px;object-fit:contain;border-radius:12px;float:right;margin:0 0 8px 12px}
+.import-footer{position:sticky;bottom:-22px;padding:12px 0 0;background:var(--surface);clear:both}
+.import-footer p:not(:empty){margin:0 0 8px}
+.import-footer button{width:100%}
+.component-field>label,.component-list{grid-column:1/-1}
+.component-field>.text-action{grid-column:1/-1;justify-self:start}
+.component-row{margin-block:8px;border-top:1px solid var(--rule)}
+.component-row summary{cursor:pointer;min-height:44px;align-content:center;font-size:14px;font-weight:600}
+.component-row .form-pair label{font-size:13px;display:grid;gap:4px;min-width:0}
+.component-row input{border-color:var(--rule);background:var(--surface)}
