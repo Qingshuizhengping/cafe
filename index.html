@@ -7,8 +7,8 @@
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f2f2">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#141414">
 <title>豆档 · 咖啡豆录入</title>
-<link rel="stylesheet" href="./preview.css">
-<script type="module" src="./preview.mjs?v=3"></script>
+<link rel="stylesheet" href="./preview.css?v=4">
+<script type="module" src="./preview.mjs?v=4"></script>
 </head>
 <body>
 <header class="site-header">
@@ -18,6 +18,7 @@
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg>
 我的豆库
 </button>
+<span class="nav-context" id="nav-context"></span>
 </nav>
 </header>
 <main class="shell">
@@ -38,8 +39,10 @@
 <div class="capture-alternatives">
 <button id="manual-entry" class="quiet" type="button">手动录入</button>
 <button id="cover-open" class="quiet" type="button">仅保存封面</button>
+<button id="back-open" class="quiet" type="button">添加背面照片</button>
 </div>
 <input id="cover-file" type="file" accept="image/*" hidden>
+<input id="back-file" type="file" accept="image/*" hidden>
 <input id="camera" type="file" accept="image/*" capture="environment" hidden>
 <input id="gallery" type="file" accept="image/*" hidden>
 <p id="scan-status" role="status"></p>
@@ -72,10 +75,71 @@
 <div id="library-tools" class="library-tools" hidden>
 <label for="library-search" class="sr-only">搜索豆库</label><input id="library-search" type="search" placeholder="搜索名称、产地或烘焙商">
 <label for="library-filter" class="sr-only">库存状态</label><select id="library-filter"><option value="">全部库存</option><option value="available">还有余量</option><option value="empty">已用完</option></select>
+<label for="library-sort" class="sr-only">排序</label><select id="library-sort"><option value="recent">最近添加</option><option value="age">烘焙日期</option><option value="remaining">剩余克数</option><option value="price">单克价</option><option value="rating">个人评分</option><option value="name">名称</option></select>
 </div>
+<details class="library-filter-panel" id="library-filters" hidden><summary>更多筛选</summary><div class="library-filters">
+<label>赏味状态<select id="phase-filter"><option value="">全部状态</option><option value="resting">养豆中</option><option value="ready">参考赏味期</option><option value="past">已过参考赏味期</option><option value="frozen">冷冻保存</option><option value="transit">在途</option></select></label>
+<label>分类<select id="category-filter"><option value="">全部分类</option><option>手冲</option><option>意式</option><option>全能</option></select></label>
+<label>分组<select id="group-filter"><option value="">全部分组</option></select></label>
+</div></details>
 <div id="entries"></div>
 </section>
+<section id="bean-detail" hidden aria-labelledby="detail-title">
+<div class="page-heading"><div><h1 id="detail-title" tabindex="-1"></h1><p id="detail-state" class="intro"></p></div><button id="detail-edit" type="button" class="secondary">编辑资料</button></div>
+<div id="detail-overview"></div>
+<div class="action-row"><button id="detail-taste" class="primary" type="button">记品鉴</button><button id="detail-brew" class="secondary" type="button">开始冲煮</button><button id="detail-repurchase" class="secondary" type="button">续购一包</button><button id="detail-share" type="button">分享豆档</button></div>
+<p id="detail-feedback" class="feedback" role="status"></p>
+<details class="info-section"><summary>包装与购买信息</summary><dl id="detail-fields" class="definition-list"></dl></details>
+<section class="info-section" aria-labelledby="tasting-list-title"><h2 id="tasting-list-title">品鉴记录</h2><div id="tasting-list"></div></section>
+<section class="info-section" aria-labelledby="stock-history-title"><h2 id="stock-history-title">库存历史</h2><p class="supporting">库存调整单独记录，消耗统计只计算减豆与品鉴用量。</p><div id="stock-history"></div></section>
+</section>
+<section id="statistics" hidden aria-labelledby="stats-title">
+<div class="page-heading"><div><h1 id="stats-title" tabindex="-1">统计</h1><p class="intro">回看消耗、花费和喜欢的咖啡。</p></div><label class="compact-control">统计范围<select id="stats-range"><option value="30">近 30 天</option><option value="7">近 7 天</option><option value="all">全部记录</option></select></label></div>
+<div id="stats-overview" class="stat-grid"></div>
+<p class="supporting" id="stats-coverage"></p>
+<section class="info-section"><h2>消耗趋势</h2><p class="supporting">显示所选范围内最近 14 个有消耗记录的日期。</p><div id="consumption-chart" class="consumption-chart"></div></section>
+<section class="info-section"><h2>个人榜单</h2><p class="supporting">优先采用逐次品鉴的平均分，未记品鉴时采用豆档评级。</p><div id="bean-ranking"></div></section>
+<section class="info-section"><h2>最近消耗</h2><div id="recent-consumption"></div></section>
+</section>
+<section id="brewing" hidden aria-labelledby="brew-title">
+<div class="page-heading"><div><h1 id="brew-title" tabindex="-1">冲煮</h1><p class="intro">选豆、设定分段，完成后记录这一杯。</p></div></div>
+<form id="brew-form" class="workspace-form">
+<label>咖啡豆<select id="brew-bean"></select></label>
+<label>冲煮方案<select id="brew-recipe"><option value="three">三段式</option><option value="four-six">4:6 五段式</option><option value="custom">自定义</option></select></label>
+<div class="form-pair"><label>粉量（g）<input id="brew-dose" type="number" min="0.01" step="0.01" value="15" required></label><label>总水量（g）<input id="brew-water" type="number" min="1" step="1" value="225" required></label></div>
+<div class="form-pair"><label>水温（°C）<input id="brew-temp" type="number" min="0" max="100" value="92"></label><label>研磨度<input id="brew-grind" placeholder="例如 18 格"></label></div>
+<label>器具<input id="brew-equipment" value="V60" placeholder="例如 V60"></label>
+<fieldset class="stage-editor"><legend>分段计划</legend><p class="supporting">每段填写结束秒数与累计注水量。</p><div id="brew-stages"></div><button id="stage-add" type="button" class="text-action">添加一段</button></fieldset>
+<div class="form-pair"><label>保存方案的名称<input id="recipe-name" placeholder="例如 我的日常手冲"></label><button id="recipe-save" type="button" class="secondary">保存方案</button></div>
+</form>
+<section id="brew-timer" class="timer-panel" aria-label="冲煮计时器"><output id="brew-clock" aria-label="已用时间" aria-live="off">00:00</output><p id="brew-stage-status">准备好后开始计时</p><p id="brew-announcement" class="sr-only" role="status"></p><progress id="brew-progress" max="1" value="0" aria-label="冲煮进度"></progress><div class="action-row"><button id="brew-start" class="primary" type="submit" form="brew-form">开始计时</button><button id="brew-reset" type="button">重置计时</button><button id="brew-finish" class="secondary" type="button">完成并记品鉴</button></div></section>
+<p id="brew-feedback" class="feedback" role="status"></p>
+</section>
+<section id="data-page" hidden aria-labelledby="data-title">
+<div class="page-heading"><div><h1 id="data-title" tabindex="-1">数据与备份</h1><p class="intro">把豆档、照片、品鉴与库存历史一起带走。</p></div></div>
+<section class="info-section"><h2>导出备份</h2><p>下载 JSON 备份，包含当前全部豆档与已保存的冲煮方案。</p><button id="backup-export" type="button" class="primary">导出全部数据</button></section>
+<section class="info-section"><h2>恢复备份</h2><p>选择豆档导出的 JSON 文件。确认前会显示导入数量，已有数据保留，内容不同的同编号豆档会另存为副本。</p><label class="file-label">选择备份<input id="backup-file" type="file" accept=".json,application/json"></label><div id="import-preview" hidden><p id="import-summary"></p><div class="action-row"><button id="backup-confirm" class="primary" type="button">确认合并导入</button><button id="backup-cancel" type="button">取消</button></div></div></section>
+<p id="data-feedback" class="feedback" role="status"></p>
+<p class="supporting">资料保存在当前浏览器。更换设备或清理浏览器数据前，请导出备份。旧豆档会从本次更新后开始积累消耗与品鉴历史。</p>
+</section>
 </main>
+<nav id="app-nav" class="app-nav" aria-label="主要功能" hidden>
+<button id="nav-library" type="button" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M4 10h16M10 10v10"/></svg>豆库</button>
+<button id="nav-brewing" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 8h12v8a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4Zm12 1h2a3 3 0 0 1 0 6h-2M8 3v2m5-2v2"/></svg><span id="brew-nav-label">冲煮</span></button>
+<button id="nav-statistics" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 20V11m7 9V4m7 16V8"/></svg>统计</button>
+<button id="nav-data-page" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v7c0 4 16 4 16 0V5M4 12v7c0 4 16 4 16 0v-7"/></svg>数据</button>
+</nav>
+<dialog id="tasting-dialog" aria-labelledby="tasting-title"><form id="tasting-form" class="workspace-form">
+<h2 id="tasting-title">记录品鉴</h2><p id="tasting-bean" class="supporting"></p>
+<label>品鉴时间<input id="tasting-date" type="datetime-local" required></label>
+<label>本次用豆（g）<input id="tasting-dose" type="number" min="0" step="0.01" value="0" required></label><p class="supporting">用量会同步扣除库存。仅补写感受时填 0。</p>
+<label>总体评分<select id="tasting-rating"><option value="0">暂不评分</option><option value="1">1 分</option><option value="2">2 分</option><option value="3">3 分</option><option value="4">4 分</option><option value="5">5 分</option></select></label>
+<div id="taste-dimensions" class="taste-dimensions"></div>
+<label>品鉴感受<textarea id="tasting-text" rows="3" placeholder="记录香气、风味与这一杯的感受"></textarea></label>
+<details><summary>冲煮参数</summary><div class="form-pair"><label>器具<input id="tasting-equipment"></label><label>水量（g）<input id="tasting-water" type="number" min="0" step="0.01"></label><label>水温（°C）<input id="tasting-temp" type="number" min="0" max="100"></label><label>研磨度<input id="tasting-grind"></label></div></details>
+<p id="tasting-error" class="feedback" role="status"></p><div class="dialog-actions"><button id="tasting-cancel" type="button">取消</button><button class="primary" type="submit">保存品鉴</button></div>
+</form></dialog>
+<dialog id="action-confirm" aria-labelledby="action-confirm-title"><h2 id="action-confirm-title"></h2><p id="action-confirm-text"></p><p id="action-confirm-error" role="status"></p><div class="dialog-actions"><button id="action-confirm-cancel" type="button" autofocus>取消</button><button id="action-confirm-ok" class="primary" type="button">确认</button></div></dialog>
 <dialog id="deleted-editor" aria-labelledby="deleted-editor-title" aria-describedby="deleted-editor-note">
 <h2 id="deleted-editor-title">这条豆档已被删除</h2>
 <p id="deleted-editor-note">可以返回豆库，或将当前内容另存为一条新的豆档。</p>

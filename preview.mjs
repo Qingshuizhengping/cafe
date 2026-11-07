@@ -1,4 +1,6 @@
 import {scanLabel} from './core/scan.mjs';
+import {recordStock, flavorState, unitCost, undoStock} from './core/journal.mjs';
+import {createWorkspace} from './workspace.mjs?v=4';
 
 const $ = id => document.getElementById(id);
 const form = $('entry');
@@ -24,7 +26,9 @@ const groups = {
     ['altitude', '海拔（m）'], ['process', '处理法'], ['flavors', '风味', 'text', '用顿号分隔'],
   ],
   自用记录: [
-    ['rest', '养豆期（天）', 'number'], ['storage', '储存方式', ['常温', '冷冻']],
+    ['rest', '养豆期（天）', 'number', '默认 7，可自行调整'], ['storage', '储存方式', ['常温', '冷冻', '在途']],
+    ['freshDays', '赏味结束日（烘焙后天数）', 'number', '默认 60，可自行调整'],
+    ['category', '用途分类', ['手冲', '意式', '全能']], ['group', '分组', 'text', '例如 日常、分享、收藏'],
     ['rating', '评级', ['1', '2', '3', '4', '5']], ['notes', '备注', 'textarea'],
   ],
 };
@@ -91,6 +95,8 @@ let editing = null;
 let originalValues = {};
 let objectUrl;
 let pendingCover;
+let pendingBackCover;
+let originalBackCover;
 let originalCover;
 let busy = false;
 let records = [];
@@ -98,6 +104,7 @@ let deducting;
 let stockConflict;
 let scanController;
 let review = {};
+let workspace;
 
 function readRecords() {
   const stored = JSON.parse(localStorage.getItem(key));
@@ -126,10 +133,16 @@ function updatePrice() {
 }
 
 function showLibrary(visible, focus = true) {
+  workspace?.hide();
   $('editor').hidden = visible;
   $('library').hidden = !visible;
   $('brand').hidden = !visible;
   $('library-toggle').hidden = visible;
+  $('app-nav').hidden = !visible;
+  for (const button of $('app-nav').querySelectorAll('button')) {
+    if (button.id === 'nav-library') button.setAttribute('aria-current', 'page');
+    else button.removeAttribute('aria-current');
+  }
   window.scrollTo(0, 0);
   if (focus) $(visible ? 'library-title' : 'editor-title').focus({preventScroll: true});
 }
@@ -159,10 +172,10 @@ function formValues() {
 function saveDraft() {
   const values = formValues();
   try {
-    const dirty = pendingCover !== undefined || Object.keys(review).length ||
+    const dirty = pendingCover !== undefined || pendingBackCover !== undefined || Object.keys(review).length ||
       Object.keys(values).some(name => values[name] !== (originalValues[name] ?? ''));
     if (dirty) {
-      localStorage.setItem(draftId(), JSON.stringify({values, originalValues, review, cover: pendingCover}));
+      localStorage.setItem(draftId(), JSON.stringify({values, originalValues, review, cover: pendingCover, backCover: pendingBackCover}));
     } else {
       localStorage.removeItem(draftId());
     }
@@ -176,6 +189,8 @@ function openRecord(record) {
   editing = record?.id ?? null;
   const draft = readDraft(editing);
   pendingCover = draft?.cover;
+  pendingBackCover = draft?.backCover;
+  originalBackCover = record?.backCover;
   originalValues = draft?.originalValues ?? record?.values ?? {};
   review = draft?.review ?? {};
   $('discard-draft').hidden = !draft;
@@ -364,7 +379,7 @@ function beanActionRow(card, controls, record) {
   };
   remove.onclick = () => {
     beanToDelete = record;
-    $('delete-bean-message').textContent = '删除「' + record.values.name + '」及其未保存草稿？';
+    $('delete-bean-message').textContent = '删除「' + record.values.name + '」及其照片、品鉴、库存历史和未保存草稿？';
     $('delete-bean-error').textContent = '';
     $('delete-bean').showModal();
   };
@@ -449,14 +464,35 @@ function renderLibrary() {
   $('stock-total').textContent = formatGrams.format(stockTotal / 100);
   $('new-entry').textContent = readDraft(null) ? '继续新增草稿' : '添加咖啡豆';
   $('library-tools').hidden = records.length === 0;
+  $('library-filters').hidden = records.length === 0;
+  const selectedGroup = $('group-filter').value;
+  $('group-filter').replaceChildren(new Option('全部分组', ''), ...[...new Set(records.map(record => record.values.group).filter(Boolean))].sort().map(value => new Option(value, value)));
+  $('group-filter').value = selectedGroup;
   $('entries').replaceChildren();
   const query = $('library-search').value.trim().toLowerCase();
   const filter = $('library-filter').value;
+  const phase = $('phase-filter').value;
+  const category = $('category-filter').value;
+  const group = $('group-filter').value;
+  const extraFilters = [phase, category, group].filter(Boolean).length;
+  $('library-filters').querySelector('summary').textContent = '更多筛选' + (extraFilters ? ' · 已选 ' + extraFilters + ' 项' : '');
+  const sort = $('library-sort').value;
   const visibleRecords = records.filter(({values}) => {
     const available = Number(values.remaining) > 0;
     return (!filter || available === (filter === 'available')) &&
+      (!phase || flavorState(values).key === phase) && (!category || values.category === category) &&
+      (!group || values.group === group) &&
       [values.name, values.origin, values.roaster].some(value => (value ?? '').toLowerCase().includes(query));
-  }).sort((a, b) => (b.pinnedAt ?? 0) - (a.pinnedAt ?? 0));
+  }).sort((a, b) => {
+    const pinned = (b.pinnedAt ?? 0) - (a.pinnedAt ?? 0);
+    if (pinned) return pinned;
+    if (sort === 'remaining') return Number(b.values.remaining) - Number(a.values.remaining);
+    if (sort === 'age') return (a.values.roastDate || '9999').localeCompare(b.values.roastDate || '9999');
+    if (sort === 'price') return (unitCost(a.values) ?? Infinity) - (unitCost(b.values) ?? Infinity);
+    if (sort === 'rating') return Number(b.values.rating || 0) - Number(a.values.rating || 0);
+    if (sort === 'name') return a.values.name.localeCompare(b.values.name, 'zh-CN');
+    return 0;
+  });
   $('entries').classList.toggle('bean-grid', visibleRecords.length > 0);
   if (!visibleRecords.length) $('entries').textContent = records.length ? '没有符合条件的咖啡豆。' : '还没有保存的咖啡豆。';
   const now = new Date();
@@ -482,7 +518,7 @@ function renderLibrary() {
     const brand = values.roaster?.trim();
     const name = values.name.trim();
     button.textContent = brand && !name.toLowerCase().startsWith(brand.toLowerCase()) ? brand + ' ' + name : name;
-    button.onclick = () => openRecord(record);
+    button.onclick = () => workspace.openDetail(record);
     const remaining = Number(values.remaining);
     const weight = Number(values.weight);
     const stock = document.createElement('span');
@@ -526,8 +562,15 @@ function renderLibrary() {
     controls.className = 'bean-controls';
     controls.append(deduct);
     row.append(media, button, metrics, controls);
+    if (remaining > 0) {
+      const phase = document.createElement('small');
+      phase.className = 'bean-phase';
+      phase.textContent = flavorState(values).label;
+      row.append(phase);
+    }
     $('entries').append(beanActionRow(row, controls, record));
   }
+  workspace?.refresh();
 }
 
 $('deduct-cancel').onclick = () => $('deduct').close();
@@ -569,7 +612,7 @@ $('deduct-form').addEventListener('submit', async event => {
         throw new Error('请输入大于 0 且不超过当前余量（' + record.values.remaining + ' g）的克数。');
       }
       const remaining = String((available - used) / 100);
-      updated = {...record, lastDose: grams, undoDeduction: {
+      updated = {...recordStock(record, remaining, 'deduction', {id: token}), lastDose: grams, undoDeduction: {
         token, previous: record.values.remaining, remaining, previousDose: record.lastDose,
       }, values: {...record.values, remaining}};
       return current.map(item => item.id === id ? updated : item.undoDeduction ? {...item, undoDeduction: null} : item);
@@ -597,7 +640,8 @@ $('undo-deduct').onclick = async () => {
       if (record.id !== id || record.undoDeduction?.token !== token) return record;
       restored = record.values.remaining === remaining && Number(previous) <= Number(record.values.weight);
       return restored
-        ? {...record, undoDeduction: null, lastDose: previousDose, values: {...record.values, remaining: previous}}
+        ? {...((record.history ?? []).some(item => item.id === token)
+          ? undoStock(record, token) : {...record, values: {...record.values, remaining: previous}}), undoDeduction: null, lastDose: previousDose}
         : {...record, undoDeduction: null};
     }));
     renderLibrary();
@@ -738,6 +782,9 @@ form.addEventListener('submit', async event => {
     return;
   }
   const values = Object.fromEntries([...new FormData(form)].map(([name, value]) => [name, value.trim()]));
+  const rest = values.rest === '' ? 7 : Number(values.rest);
+  const end = values.freshDays === '' ? 60 : Number(values.freshDays);
+  if (end < rest) { $('save-status').textContent = '赏味结束日须不早于养豆结束日。'; return; }
   if (!values.name) {
     $('save-status').textContent = '请输入咖啡豆名称。';
     $('name').focus();
@@ -756,7 +803,7 @@ form.addEventListener('submit', async event => {
   try {
     await updateRecords(current => {
       const existing = current.find(record => record.id === id);
-      if (asNew || !sourceId) return [{id, values, cover: pendingCover ?? originalCover}, ...current];
+      if (asNew || !sourceId) return [{id, values, cover: pendingCover ?? originalCover, backCover: pendingBackCover ?? originalBackCover}, ...current];
       if (!existing) throw deleted;
       const changes = Object.fromEntries(Object.entries(values).filter(([name, value]) => value !== (originalValues[name] ?? '')));
       if ('remaining' in changes && existing.values.remaining !== originalValues.remaining && changes.remaining !== existing.values.remaining) {
@@ -768,8 +815,9 @@ form.addEventListener('submit', async event => {
       if (Number(merged.remaining) > Number(merged.weight)) {
         throw new Error('当前余量超过你填写的总重量，请核对后再保存。');
       }
+      const adjusted = merged.remaining === existing.values.remaining ? existing : recordStock({...existing, values: {...existing.values, weight: merged.weight}}, merged.remaining, 'adjustment');
       return current.map(record => record.id === id ? {
-        ...existing, values: merged, cover: pendingCover ?? existing.cover,
+        ...adjusted, values: merged, cover: pendingCover ?? existing.cover, backCover: pendingBackCover ?? existing.backCover,
         undoDeduction: merged.remaining === existing.values.remaining && Number(merged.weight) >= Number(existing.undoDeduction?.previous)
           ? existing.undoDeduction : null,
       } : record);
@@ -795,6 +843,7 @@ form.addEventListener('submit', async event => {
 $('camera-open').onclick = () => $('camera').click();
 $('gallery-open').onclick = () => $('gallery').click();
 $('cover-open').onclick = () => $('cover-file').click();
+$('back-open').onclick = () => $('back-file').click();
 $('cancel-scan').onclick = () => {
   scanController.abort();
   scanController = undefined;
@@ -805,7 +854,7 @@ $('cancel-scan').onclick = () => {
 
 function setScanBusy(value) {
   busy = value;
-  for (const id of ['camera-open', 'gallery-open', 'cover-open', 'manual-entry', 'library-toggle']) $(id).disabled = value;
+  for (const id of ['camera-open', 'gallery-open', 'cover-open', 'back-open', 'manual-entry', 'library-toggle']) $(id).disabled = value;
   form.querySelector('[type=submit]').disabled = value;
   $('cancel-scan').hidden = !value;
 }
@@ -842,12 +891,13 @@ function photoCanvas(maxSide) {
   return canvas;
 }
 
-function saveCover() {
+function saveCover(back = false) {
   let maxSide = 320;
   while (maxSide >= 80) {
     const cover = photoCanvas(maxSide).toDataURL('image/jpeg', 0.8);
     if (cover.startsWith('data:image/jpeg;base64,') && cover.length <= 28000) {
-      pendingCover = cover;
+      if (back) pendingBackCover = cover;
+      else pendingCover = cover;
       saveDraft();
       return true;
     }
@@ -866,7 +916,7 @@ async function recognizeWithGlm(signal) {
   return fields;
 }
 
-for (const id of ['camera', 'gallery', 'cover-file']) {
+for (const id of ['camera', 'gallery', 'cover-file', 'back-file']) {
   $(id).addEventListener('change', async event => {
     const file = event.target.files[0];
     event.target.value = '';
@@ -879,14 +929,14 @@ for (const id of ['camera', 'gallery', 'cover-file']) {
     objectUrl = URL.createObjectURL(file);
     photo.src = objectUrl;
     photo.hidden = false;
-    const coverOnly = id === 'cover-file';
+    const coverOnly = id === 'cover-file' || id === 'back-file';
     $('scan-status').textContent = coverOnly ? '正在处理豆袋照片…' : 'GLM 正在识别豆袋…';
     try {
       await photo.decode();
       if (controller.signal.aborted) return;
-      const coverSaved = saveCover();
+      const coverSaved = saveCover(id === 'back-file');
       if (coverOnly) {
-        $('scan-status').textContent = coverSaved ? '已添加豆袋图，保存后会显示在磁贴上。' : '无法生成豆袋缩略图，请换一张照片。';
+        $('scan-status').textContent = coverSaved ? (id === 'back-file' ? '已添加背面照片，保存后可在详情查看。' : '已添加豆袋图，保存后会显示在磁贴上。') : '无法生成豆袋缩略图，请换一张照片。';
         return;
       }
       let glmFields;
@@ -931,6 +981,20 @@ $('library-toggle').onclick = () => {
 $('new-entry').onclick = () => openRecord();
 $('library-search').oninput = renderLibrary;
 $('library-filter').onchange = renderLibrary;
+for (const id of ['library-sort','phase-filter','category-filter','group-filter']) $(id).onchange = renderLibrary;
+workspace = createWorkspace({
+  getRecords: () => records,
+  mutate: async update => { await updateRecords(update); renderLibrary(); },
+  openEditor: openRecord,
+  openLibrary: () => { records = readRecords(); renderLibrary(); showLibrary(true); },
+  fieldLabels,
+});
+window.addEventListener('storage', event => {
+  if (event.key === key) {
+    try { records = readRecords(); renderLibrary(); }
+    catch { $('library-status').textContent = '读取更新失败，请重新打开应用。'; }
+  }
+});
 renderLibrary();
 if (records.length) showLibrary(true, false);
 else if (readDraft(null)) openRecord();
