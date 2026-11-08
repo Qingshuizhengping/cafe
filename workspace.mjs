@@ -80,7 +80,7 @@ function downloadFile(fileName, value) {
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
-export function createWorkspace({getRecords, mutate, withDataLock, openEditor, openLibrary, fieldLabels}) {
+export function createWorkspace({getRecords, mutate, withDataLock, setDockPage, openEditor, openLibrary, fieldLabels}) {
   let active = '';
   let selectedId;
   let tastingContext;
@@ -120,14 +120,10 @@ export function createWorkspace({getRecords, mutate, withDataLock, openEditor, o
     active = id;
     $('editor').hidden = $('library').hidden = true;
     $(id).hidden = false;
-    $('app-nav').hidden = false;
     $('brand').hidden = true;
     $('library-toggle').hidden = false;
     $('nav-context').textContent = id === 'bean-detail' ? '豆档详情' : '';
-    for (const item of $('app-nav').querySelectorAll('button')) {
-      if (item.id === 'nav-' + id || (id === 'bean-detail' && item.id === 'nav-library')) item.setAttribute('aria-current', 'page');
-      else item.removeAttribute('aria-current');
-    }
+    setDockPage(id === 'bean-detail' ? 'library' : id);
     refresh();
     window.scrollTo(0, 0);
     $(id).querySelector('h1').focus({preventScroll: true});

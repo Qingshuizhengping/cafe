@@ -222,61 +222,113 @@ dialog input{border-color:var(--rule);margin-top:4px}
 @media(max-width:360px){.field{grid-template-columns:minmax(0,1fr);gap:2px;padding-block:8px}.field input,.field select,.field textarea{padding-inline:4px}}
 .nav-context{font-size:14px;color:var(--muted)}
 .app-nav{
-  --dock-tint:#ffffff85;
-  --dock-sheen:#ffffff85;
-  --dock-edge:#0000001c;
+  --dock-inset:6px;
+  --dock-tint:#ffffff9e;
+  --dock-sheen:#ffffffa3;
+  --dock-edge:#00000024;
   --dock-selection:#17171716;
+  --dock-ink:#303030;
+  --dock-index:0;
   position:fixed;
   z-index:2;
-  bottom:max(12px,env(safe-area-inset-bottom));
-  left:50%;
-  transform:translateX(-50%);
-  display:flex;
-  gap:2px;
-  width:min(440px,calc(100% - 32px));
-  padding:5px;
-  border:1px solid var(--dock-edge);
+  inset-inline:0;
+  bottom:max(14px,calc(env(safe-area-inset-bottom) + 4px));
+  width:min(364px,calc(100% - 40px));
+  margin-inline:auto;
+  padding:var(--dock-inset);
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
   border-radius:999px;
+  touch-action:manipulation;
+}
+.app-nav::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:0;
+  border:1px solid var(--dock-edge);
+  border-radius:inherit;
   background:var(--surface);
+  pointer-events:none;
 }
 .app-nav button{
-  flex:1;
+  position:relative;
+  z-index:1;
   min-width:0;
-  min-height:54px;
+  min-height:50px;
   display:grid;
   place-content:center;
   justify-items:center;
-  gap:2px;
-  padding:5px 4px;
+  gap:3px;
+  padding:4px 2px;
   border-radius:999px;
+  color:var(--dock-ink);
   font-size:12px;
-  line-height:1.25;
+  font-weight:550;
+  line-height:1.2;
+  white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;
 }
-.app-nav svg{width:22px;height:22px}
-.app-nav [aria-current]{background:var(--selection);font-weight:700}
+.app-nav svg{
+  width:22px;
+  height:22px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.7;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.app-nav button:hover{background:transparent}
+.app-nav button[aria-current]{background:var(--dock-selection);color:var(--ink);font-weight:720}
+.app-nav button:active{opacity:.7}
+.app-nav button:focus-visible{outline-offset:-2px}
+@supports selector(:has(*)){
+  .app-nav:has(#nav-brewing[aria-current]){--dock-index:1}
+  .app-nav:has(#nav-statistics[aria-current]){--dock-index:2}
+  .app-nav:has(#nav-data-page[aria-current]){--dock-index:3}
+  .app-nav::after{
+    content:"";
+    position:absolute;
+    inset-block:var(--dock-inset);
+    inset-inline-start:var(--dock-inset);
+    z-index:0;
+    width:calc((100% - 2 * var(--dock-inset)) / 4);
+    border-radius:inherit;
+    background:var(--dock-selection);
+    transform:translateX(calc(var(--dock-index) * 100%));
+    pointer-events:none;
+  }
+  .app-nav button[aria-current]{background:transparent}
+}
+@media(prefers-reduced-motion:no-preference){
+  .app-nav::after{transition:transform 190ms cubic-bezier(.2,.8,.2,1)}
+}
+@media(hover:hover) and (pointer:fine){
+  .app-nav button:hover{color:var(--ink)}
+}
 @media(prefers-color-scheme:dark){
   .app-nav{
-    --dock-tint:#1b1b1bb0;
-    --dock-sheen:#ffffff26;
-    --dock-edge:#ffffff36;
-    --dock-selection:#ffffff26;
+    --dock-tint:#1b1b1bb8;
+    --dock-sheen:#ffffff24;
+    --dock-edge:#ffffff35;
+    --dock-selection:#ffffff22;
+    --dock-ink:#dedede;
   }
 }
 @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-  .app-nav{
-    background:linear-gradient(180deg,var(--dock-sheen),transparent 28%) var(--dock-tint);
-    -webkit-backdrop-filter:blur(6px) saturate(1.18);
-    backdrop-filter:blur(6px) saturate(1.18);
+  .app-nav::before{
+    background:linear-gradient(180deg,var(--dock-sheen),transparent 34%) var(--dock-tint);
+    -webkit-backdrop-filter:blur(8px) saturate(1.15);
+    backdrop-filter:blur(8px) saturate(1.15);
   }
-  .app-nav [aria-current]{background:var(--dock-selection)}
 }
 @media(prefers-reduced-transparency:reduce){
-  .app-nav{
+  .app-nav::before{
     background:var(--surface);
     -webkit-backdrop-filter:none;
     backdrop-filter:none;
   }
-  .app-nav [aria-current]{background:var(--selection)}
+  .app-nav{--dock-selection:var(--selection)}
 }
 .page-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:28px 0 20px}
 .page-heading h1{font-size:32px;margin:0 0 8px;overflow-wrap:anywhere}

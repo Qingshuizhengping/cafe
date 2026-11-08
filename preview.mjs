@@ -1,6 +1,6 @@
 import {scanLabel} from './core/scan.mjs?v=6';
 import {recordStock, flavorState, unitCost, undoStock, readBackup} from './core/journal.mjs?v=6';
-import {createWorkspace} from './workspace.mjs?v=6';
+import {createWorkspace} from './workspace.mjs?v=7';
 import {createCamera, createImporter, componentEditor, recognizeFile} from './importer.mjs?v=5';
 import {normalizeComponents} from './core/recognition.mjs';
 
@@ -150,17 +150,22 @@ function updatePrice() {
   $('unitPrice').value = mass > 0 && Number.isFinite(price) ? (price / mass).toFixed(2) : '—';
 }
 
+function setDockPage(page) {
+  const dock = $('app-nav');
+  for (const button of dock.querySelectorAll('button')) {
+    if (button.getAttribute('aria-controls') === page) button.setAttribute('aria-current', 'page');
+    else button.removeAttribute('aria-current');
+  }
+  dock.hidden = !page;
+}
+
 function showLibrary(visible, focus = true) {
   workspace?.hide();
   $('editor').hidden = visible;
   $('library').hidden = !visible;
   $('brand').hidden = !visible;
   $('library-toggle').hidden = visible;
-  $('app-nav').hidden = !visible;
-  for (const button of $('app-nav').querySelectorAll('button')) {
-    if (button.id === 'nav-library') button.setAttribute('aria-current', 'page');
-    else button.removeAttribute('aria-current');
-  }
+  setDockPage(visible ? 'library' : null);
   window.scrollTo(0, 0);
   if (focus) $(visible ? 'library-title' : 'editor-title').focus({preventScroll: true});
 }
@@ -1026,6 +1031,7 @@ workspace = createWorkspace({
   getRecords: () => records,
   mutate: async (update, commit) => { await updateRecords(update, commit); renderLibrary(); },
   withDataLock,
+  setDockPage,
   openEditor: openRecord,
   openLibrary: () => { records = readRecords(); renderLibrary(); showLibrary(true); },
   fieldLabels,

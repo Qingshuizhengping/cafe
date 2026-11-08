@@ -7,8 +7,8 @@
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f2f2">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#141414">
 <title>豆档 · 咖啡豆录入</title>
-<link rel="stylesheet" href="./preview.css?v=6">
-<script type="module" src="./preview.mjs?v=6"></script>
+<link rel="stylesheet" href="./preview.css?v=7">
+<script type="module" src="./preview.mjs?v=7"></script>
 </head>
 <body>
 <header class="site-header">
@@ -140,10 +140,10 @@
 <div class="import-footer"><p id="import-feedback" class="feedback" role="status"></p><button id="import-save" class="primary" type="button" disabled>选择要导入的豆</button></div>
 </dialog>
 <nav id="app-nav" class="app-nav" aria-label="主要功能" hidden>
-<button id="nav-library" type="button" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M4 10h16M10 10v10"/></svg>豆库</button>
-<button id="nav-brewing" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 8h12v8a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4Zm12 1h2a3 3 0 0 1 0 6h-2M8 3v2m5-2v2"/></svg><span id="brew-nav-label">冲煮</span></button>
-<button id="nav-statistics" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 20V11m7 9V4m7 16V8"/></svg>统计</button>
-<button id="nav-data-page" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v7c0 4 16 4 16 0V5M4 12v7c0 4 16 4 16 0v-7"/></svg>数据</button>
+<button id="nav-library" type="button" aria-controls="library" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M4 10h16m-9 0v10"/></svg><span>豆库</span></button>
+<button id="nav-brewing" type="button" aria-controls="brewing"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 8.5h12v7a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4Zm12 1.5h1.75a2.75 2.75 0 0 1 0 5.5H16.5M8 3.5v2m5-2v2"/></svg><span id="brew-nav-label">冲煮</span></button>
+<button id="nav-statistics" type="button" aria-controls="statistics"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 19.5v-8m6.5 8v-15m6.5 15v-11"/></svg><span>统计</span></button>
+<button id="nav-data-page" type="button" aria-controls="data-page"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7.5" ry="2.75"/><path d="M4.5 6v12c0 3.67 15 3.67 15 0V6m-15 6c0 3.67 15 3.67 15 0"/></svg><span>数据</span></button>
 </nav>
 <dialog id="tasting-dialog" aria-labelledby="tasting-title"><form id="tasting-form" class="workspace-form">
 <h2 id="tasting-title">记录品鉴</h2><p id="tasting-bean" class="supporting"></p>
