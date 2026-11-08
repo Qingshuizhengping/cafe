@@ -40,3 +40,7 @@
 - `CAFE_VISION_TRUST_LOOPBACK_PROXY` 默认为关闭。只有本机反向代理会覆盖客户端提供的 `X-Real-IP` 时才设为 `1`。Nginx 在识别路由内使用 `proxy_set_header X-Real-IP $remote_addr;`。
 
 通过站点的 HTTPS 反向代理将 `/api/vision` 转给该进程，允许最多 2 MiB 的请求体。部署识别进程时将 `core/recognition.mjs` 放在 `vision-server.mjs` 的相对路径下。服务最多同时处理 5 张照片。每个来源 IP 每小时最多发起 20 次模型请求，整个进程最多 120 次。
+
+## 致谢
+
+感谢 Brew Guide 的作者 chuthree 和项目贡献者分享他们的实现。豆档在豆仓管理、冲煮与品鉴记录，以及拍照识别后核对入库的流程设计中参考了这个项目。 [Brew Guide](https://github.com/chuthree/brew-guide)
