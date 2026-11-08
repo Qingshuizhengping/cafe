@@ -1,5 +1,5 @@
 import {units, uid, localDate, roastAge, flavorState, unitCost, undoStock,
-  saveTasting, deleteTasting, consumptionEvents, readBackup, mergeBackup} from './core/journal.mjs?v=5';
+  saveTasting, deleteTasting, consumptionEvents, readBackup, mergeBackup} from './core/journal.mjs?v=6';
 import {normalizeComponents} from './core/recognition.mjs';
 
 const $ = id => document.getElementById(id);
@@ -30,9 +30,8 @@ function definition(list, label, value) {
   list.append(node('dt', label), node('dd', String(value)));
 }
 
-function readRecipes() {
-  try { return validateRecipes(JSON.parse(localStorage.getItem(RECIPE_KEY)) ?? []); }
-  catch { return []; }
+function readRecipes(stored = localStorage.getItem(RECIPE_KEY)) {
+  return validateRecipes(JSON.parse(stored) ?? []);
 }
 
 function validateRecipes(recipes) {
@@ -81,13 +80,15 @@ function downloadFile(fileName, value) {
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
-export function createWorkspace({getRecords, mutate, openEditor, openLibrary, fieldLabels}) {
+export function createWorkspace({getRecords, mutate, withDataLock, openEditor, openLibrary, fieldLabels}) {
   let active = '';
   let selectedId;
   let tastingContext;
   let pendingImport;
+  let backupRead = 0;
   let confirmAction;
-  let recipes = readRecipes();
+  let recipes = [];
+  try { recipes = readRecipes(); } catch {}
   let session;
   let lastAnnouncement;
   const sections = ['bean-detail', 'statistics', 'brewing', 'data-page'];
@@ -386,24 +387,31 @@ export function createWorkspace({getRecords, mutate, openEditor, openLibrary, fi
   $('stats-range').onchange = renderStats;
 
   $('backup-export').onclick = event => perform(event.currentTarget, 'data-feedback', async () => {
-    downloadFile('豆档备份-' + localDate() + '.json', {format: 'doudang', version: 1, exportedAt: new Date().toISOString(), records: getRecords(), recipes});
+    downloadFile('豆档备份-' + localDate() + '.json', {format: 'doudang', version: 1, exportedAt: new Date().toISOString(), records: getRecords(), recipes: readRecipes()});
     $('data-feedback').textContent = '备份文件已生成，请保存下载的 JSON 文件。';
   });
-  $('backup-file').onchange = event => perform($('backup-confirm'), 'data-feedback', async () => {
+  $('backup-file').onchange = async event => {
+    const read = ++backupRead;
     pendingImport = undefined;
     $('import-preview').hidden = true;
+    $('data-feedback').textContent = '';
     const file = event.target.files[0];
     if (!file) return;
-    if (file.size > 40 * 1024 * 1024) throw new Error('请选择小于 40 MB 的备份文件。');
-    const text = await file.text();
-    const incoming = readBackup(text);
-    const parsed = JSON.parse(text);
-    const importedRecipes = validateRecipes(parsed.recipes ?? []);
-    pendingImport = {records: incoming, recipes: importedRecipes};
-    $('import-summary').textContent = '已校验 ' + incoming.length + ' 份豆档、' + incoming.reduce((sum, record) => sum + record.tastings.length, 0) + ' 次品鉴和 ' + importedRecipes.length + ' 个方案。';
-    $('import-preview').hidden = false;
-  });
+    try {
+      if (file.size > 40 * 1024 * 1024) throw new Error('请选择小于 40 MB 的备份文件。');
+      const text = await file.text();
+      if (read !== backupRead) return;
+      const incoming = readBackup(text);
+      const importedRecipes = validateRecipes(JSON.parse(text).recipes ?? []);
+      pendingImport = {records: incoming, recipes: importedRecipes};
+      $('import-summary').textContent = '已校验 ' + incoming.length + ' 份豆档、' + incoming.reduce((sum, record) => sum + record.tastings.length, 0) + ' 次品鉴和 ' + importedRecipes.length + ' 个方案。';
+      $('import-preview').hidden = false;
+    } catch (error) {
+      if (read === backupRead) $('data-feedback').textContent = error.message;
+    }
+  };
   $('backup-cancel').onclick = () => {
+    backupRead++;
     pendingImport = undefined;
     $('import-preview').hidden = true;
     $('backup-file').value = '';
@@ -411,12 +419,34 @@ export function createWorkspace({getRecords, mutate, openEditor, openLibrary, fi
   $('backup-confirm').onclick = event => perform(event.currentTarget, 'data-feedback', async () => {
     if (!pendingImport) return;
     const imported = pendingImport;
-    const mergedRecipes = mergeRecipes(recipes, imported.recipes);
-    // Save schemes first. The bean merge is repeatable if storage fails on its next write.
-    localStorage.setItem(RECIPE_KEY, JSON.stringify(mergedRecipes));
-    recipes = mergedRecipes;
-    try { await mutate(current => mergeBackup(current, imported.records)); }
-    catch { throw new Error('方案已保存，豆档合并未完成。请检查储存空间后重试，原豆档仍保留。'); }
+    $('backup-file').disabled = $('backup-cancel').disabled = true;
+    try {
+      await mutate(current => mergeBackup(current, imported.records), writeRecords => {
+        const previous = localStorage.getItem(RECIPE_KEY);
+        const current = readRecipes(previous);
+        const merged = mergeRecipes(current, imported.recipes);
+        const changed = merged.length !== current.length;
+        if (changed) localStorage.setItem(RECIPE_KEY, JSON.stringify(merged));
+        try {
+          writeRecords();
+        } catch (error) {
+          if (changed) {
+            try {
+              if (previous === null) localStorage.removeItem(RECIPE_KEY);
+              else localStorage.setItem(RECIPE_KEY, previous);
+            } catch {
+              recipes = merged;
+              updateRecipeOptions();
+              throw new Error('豆档未恢复，冲煮方案已写入。请保留备份，检查浏览器储存后重试。');
+            }
+          }
+          throw error;
+        }
+        recipes = merged;
+      });
+    } finally {
+      $('backup-file').disabled = $('backup-cancel').disabled = false;
+    }
     pendingImport = undefined;
     $('import-preview').hidden = true;
     $('backup-file').value = '';
@@ -592,9 +622,11 @@ export function createWorkspace({getRecords, mutate, openEditor, openLibrary, fi
     if (!name) throw new Error('请先填写方案名称。');
     const data = brewParams();
     const recipe = {...data, id: uid(), name};
-    const next = validateRecipes([...recipes, recipe]);
-    localStorage.setItem(RECIPE_KEY, JSON.stringify(next));
-    recipes = next;
+    await withDataLock(() => {
+      const next = validateRecipes([...readRecipes(), recipe]);
+      localStorage.setItem(RECIPE_KEY, JSON.stringify(next));
+      recipes = next;
+    });
     updateRecipeOptions();
     $('brew-recipe').value = recipe.id;
     $('brew-feedback').textContent = '方案已保存。';
@@ -607,6 +639,13 @@ export function createWorkspace({getRecords, mutate, openEditor, openLibrary, fi
   }
 
   $('nav-library').onclick = openLibrary;
+  window.addEventListener('storage', event => {
+    if (event.key !== RECIPE_KEY) return;
+    try {
+      recipes = readRecipes();
+      updateRecipeOptions();
+    } catch {}
+  });
   for (const id of ['brewing','statistics','data-page']) $('nav-' + id).onclick = () => show(id);
   updateRecipeOptions();
   loadRecipe('three');

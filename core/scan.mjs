@@ -1,5 +1,7 @@
 import {parseLabel} from './label.mjs';
 
+const ocr = new URL('../vendor/ocr/', import.meta.url);
+
 export async function scanLabel(file, createWorker, onProgress = () => {}, signal) {
   if (!file.type.startsWith('image/') && file.type !== '') {
     throw new Error('请选择一张豆袋照片。');
@@ -23,6 +25,10 @@ export async function scanLabel(file, createWorker, onProgress = () => {}, signa
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
 
     worker = await createWorker(['chi_sim', 'eng'], 1, {
+      workerPath: new URL('worker.min.js', ocr).href,
+      corePath: ocr.href,
+      langPath: ocr.href,
+      workerBlobURL: false,
       logger: event => {
         if (event.status === 'recognizing text') onProgress(event.progress);
       },

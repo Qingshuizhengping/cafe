@@ -104,6 +104,21 @@ test('backup conflicts preserve both records, repeated import does not multiply 
   assert.equal(mergeBackup(merged, incoming).length, 2);
 });
 
+test('restore keeps extension fields and does not lose a valid backup to an invalid local record', () => {
+  const local = {...bean(), values: {...bean().values, remaining: '999'}};
+  const source = {...bean(), values: {...bean().values, freshDays: '36501', extension: {notes: ['test'], lot: 6}}};
+  const incoming = readBackup(JSON.stringify([source]));
+  const merged = mergeBackup([local], incoming);
+  assert.equal(merged[0], local);
+  assert.notEqual(merged[1].id, local.id);
+  assert.deepEqual(merged[1].values.extension, source.values.extension);
+  assert.equal(merged[1].values.freshDays, '36501');
+
+  source.values.extension = {lot: 6, notes: ['test']};
+  assert.equal(mergeBackup(merged, readBackup(JSON.stringify([source]))).length, 2);
+  assert.equal(mergeBackup([bean()], incoming).length, 2);
+});
+
 test('invalid backup versions, inventory, unsafe images and broken note links are rejected', () => {
   assert.throws(() => readBackup('{'));
   assert.throws(() => readBackup(JSON.stringify({format:'doudang',version:2,records:[]})));

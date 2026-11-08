@@ -1,6 +1,6 @@
-import {scanLabel} from './core/scan.mjs';
-import {recordStock, flavorState, unitCost, undoStock, readBackup} from './core/journal.mjs?v=5';
-import {createWorkspace} from './workspace.mjs?v=5';
+import {scanLabel} from './core/scan.mjs?v=6';
+import {recordStock, flavorState, unitCost, undoStock, readBackup} from './core/journal.mjs?v=6';
+import {createWorkspace} from './workspace.mjs?v=6';
 import {createCamera, createImporter, componentEditor, recognizeFile} from './importer.mjs?v=5';
 import {normalizeComponents} from './core/recognition.mjs';
 
@@ -123,13 +123,19 @@ function readRecords() {
   return Array.isArray(stored) ? stored : [];
 }
 
-function updateRecords(update) {
-  const write = () => {
+function withDataLock(action) {
+  return navigator.locks ? navigator.locks.request(key, action) : action();
+}
+
+function updateRecords(update, commit) {
+  return withDataLock(() => {
     const next = update(readRecords());
-    localStorage.setItem(key, JSON.stringify(next));
+    const serialized = JSON.stringify(next);
+    const write = () => localStorage.setItem(key, serialized);
+    if (commit) commit(write);
+    else write();
     records = next;
-  };
-  return navigator.locks ? navigator.locks.request(key, write) : write();
+  });
 }
 
 try {
@@ -976,7 +982,7 @@ async function handlePhoto(file, id) {
         return;
       }
       $('scan-status').textContent = 'GLM 未返回可用结果，正在转用本地 OCR…';
-      const {default: {createWorker}} = await import('https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/tesseract.esm.min.js');
+      const {default: {createWorker}} = await import('./vendor/ocr/tesseract.esm.min.js');
       if (controller.signal.aborted) return;
       const {text, fields} = await scanLabel(file, createWorker, progress => {
         if (!controller.signal.aborted) $('scan-status').textContent = '正在识别 ' + Math.round(progress * 100) + '%';
@@ -1018,7 +1024,8 @@ $('library-filter').onchange = renderLibrary;
 for (const id of ['library-sort','phase-filter','category-filter','group-filter']) $(id).onchange = renderLibrary;
 workspace = createWorkspace({
   getRecords: () => records,
-  mutate: async update => { await updateRecords(update); renderLibrary(); },
+  mutate: async (update, commit) => { await updateRecords(update, commit); renderLibrary(); },
+  withDataLock,
   openEditor: openRecord,
   openLibrary: () => { records = readRecords(); renderLibrary(); showLibrary(true); },
   fieldLabels,

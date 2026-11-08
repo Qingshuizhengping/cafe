@@ -17,11 +17,11 @@
 
 ## 本地预览
 
-在本目录运行 `python -m http.server 8765`，打开 `http://localhost:8765/`。
+在本目录运行 `npm ci`、`npm run prepare:ocr`，然后运行 `python -m http.server 8765`，打开 `http://localhost:8765/`。这会在 `vendor/ocr/` 生成 OCR 脚本、识别引擎和中英语言包。
 
 ## 部署
 
-使用静态站点服务，将本目录的 `index.html`、`preview.css`、`preview.mjs`、`workspace.mjs`、`importer.mjs` 和 `core/` 放到站点根目录。服务器需将 `.mjs` 作为 JavaScript 提供。目标地址为 `coffee.example.com`，需配置手机可访问的有效 HTTPS。
+使用静态站点服务，将本目录的 `index.html`、`preview.css`、`preview.mjs`、`workspace.mjs`、`importer.mjs`、`core/` 和生成的 `vendor/ocr/` 放到站点根目录。服务器需将 `.mjs` 作为 JavaScript 提供。目标地址为 `coffee.example.com`，需配置手机可访问的有效 HTTPS。
 
 ## iPhone 安装
 
@@ -31,11 +31,12 @@
 
 ## GLM 识别
 
-用 Node.js 20.20 或更新版本运行 `vision-server.mjs`。在服务端环境中配置：
+在识别服务目录放置 `package.json` 与 `package-lock.json`，运行 `npm ci --omit=dev` 安装依赖，再用 Node.js 20.20 或更新版本运行 `vision-server.mjs`。在服务端环境中配置：
 
 - `CAFE_VISION_BASE_URL` 为兼容接口的 HTTPS Base URL，包含接口的版本路径。
 - `CAFE_VISION_MODEL` 为可读取图片的模型名。
 - `CAFE_VISION_API_KEY` 为供应商密钥。
 - `CAFE_VISION_PORT` 默认为 1634，服务只监听本机。
+- `CAFE_VISION_TRUST_LOOPBACK_PROXY` 默认为关闭。只有本机反向代理会覆盖客户端提供的 `X-Real-IP` 时才设为 `1`。Nginx 在识别路由内使用 `proxy_set_header X-Real-IP $remote_addr;`。
 
-通过站点的 HTTPS 反向代理将 `/api/vision` 转给该进程，允许最多 2 MiB 的请求体。部署识别进程时将 `core/recognition.mjs` 放在 `vision-server.mjs` 的相对路径下。模型密钥从服务端读取，服务最多同时处理 5 张照片，每小时最多向模型发起 120 次请求。
+通过站点的 HTTPS 反向代理将 `/api/vision` 转给该进程，允许最多 2 MiB 的请求体。部署识别进程时将 `core/recognition.mjs` 放在 `vision-server.mjs` 的相对路径下。服务最多同时处理 5 张照片。每个来源 IP 每小时最多发起 20 次模型请求，整个进程最多 120 次。

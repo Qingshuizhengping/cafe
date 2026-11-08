@@ -136,13 +136,14 @@ function validateRecord(raw) {
   if (!raw || typeof raw !== 'object' || typeof raw.id !== 'string' || !raw.id || !raw.values) {
     throw new Error('备份中的豆档格式无效。');
   }
-  const values = Object.fromEntries(VALUE_FIELDS.filter(key => raw.values[key] != null).map(key => [key, String(raw.values[key])]));
+  const values = Object.fromEntries(Object.entries(raw.values).filter(([key, value]) => !VALUE_FIELDS.includes(key) || value != null)
+    .map(([key, value]) => [key, VALUE_FIELDS.includes(key) ? String(value) : value]));
   if (!values.name?.trim()) throw new Error('备份中存在未命名豆档。');
   numeric(values.weight, {min: .01});
   numeric(values.remaining, {max: Number(values.weight)});
   if (values.price) numeric(values.price);
   if (values.components) values.components = JSON.stringify(normalizeComponents(values.components));
-  for (const key of ['rest','freshDays','rating']) if (values[key] !== '' && values[key] != null) numeric(values[key], {max: key === 'rating' ? 5 : 36500});
+  for (const key of ['rest','freshDays','rating']) if (values[key] !== '' && values[key] != null) numeric(values[key], {max: key === 'rating' ? 5 : Number.MAX_VALUE});
   const history = (raw.history ?? []).map(event => {
     if (!event || !['deduction','adjustment','tasting','brew'].includes(event.type) || typeof event.id !== 'string') {
       throw new Error('备份中的库存历史无效。');
@@ -195,16 +196,30 @@ export function readBackup(text) {
 export function mergeBackup(current, incoming) {
   const fingerprint = record => {
     const {id, undoDeduction, ...data} = record;
-    return JSON.stringify(data);
+    return JSON.stringify(data, (_, value) => value && typeof value === 'object' && !Array.isArray(value)
+      ? Object.fromEntries(Object.keys(value).sort().map(key => [key, value[key]]))
+      : value);
+  };
+  const normalizedFingerprint = record => {
+    try { return fingerprint(validateRecord(record)); }
+    catch { return null; } // Retain older local records even when they fail current import rules.
   };
   const next = [...current];
+  const byId = new Map(next.map(record => [record.id, record]));
+  let fingerprints;
   for (const record of incoming) {
-    const existing = next.find(item => item.id === record.id);
-    if (!existing) { next.push(record); continue; }
-    const normalized = validateRecord(existing);
-    if (fingerprint(normalized) === fingerprint(record)) continue;
-    if (next.some(item => fingerprint(validateRecord(item)) === fingerprint(record))) continue;
-    next.push({...record, id: uid()});
+    const existing = byId.get(record.id);
+    const incomingFingerprint = fingerprint(record);
+    let added = record;
+    if (existing) {
+      if (normalizedFingerprint(existing) === incomingFingerprint) continue;
+      fingerprints ??= new Set(next.map(normalizedFingerprint));
+      if (fingerprints.has(incomingFingerprint)) continue;
+      added = {...record, id: uid()};
+    }
+    next.push(added);
+    byId.set(added.id, added);
+    fingerprints?.add(incomingFingerprint);
   }
   return next;
 }

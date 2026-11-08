@@ -1,12 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {once} from 'node:events';
+import sharp from 'sharp';
 import {createVisionServer} from './vision-server.mjs';
 
-async function serve(t, reply) {
+const pixel = () => sharp({create: {width: 1, height: 1, channels: 3, background: 'white'}});
+const jpeg = await pixel().jpeg().toBuffer();
+const png = await pixel().png().toBuffer();
+
+async function serve(t, reply, options = {}) {
   const calls = [];
   const server = createVisionServer(
-    {baseUrl: 'https://example.test/v1', model: 'glm-test', apiKey: 'test-key'},
+    {baseUrl: 'https://example.test/v1', model: 'glm-test', apiKey: 'test-key', ...options},
     async (url, options) => {
       calls.push({url, body: JSON.parse(options.body)});
       return {ok: true, json: async () => ({choices: [{message: {content: reply}}]})};
@@ -29,7 +34,7 @@ test('vision API forwards deterministic JSON-mode requests and keeps legacy sing
   const response = await fetch(url, {
     method: 'POST',
     headers: {'Content-Type': 'image/jpeg'},
-    body: Buffer.from([255, 216, 255, 1]),
+    body: jpeg,
   });
   assert.equal(response.status, 200);
   const result = await response.json();
@@ -45,7 +50,7 @@ test('small PNG inputs remain PNG and multiple beans reach the client', async (t
   const response = await fetch(url, {
     method: 'POST',
     headers: {'Content-Type': 'image/png'},
-    body: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]),
+    body: png,
   });
   assert.equal(response.status, 200);
   assert.equal((await response.json()).beans[1].fields.weight, '250');
@@ -58,6 +63,10 @@ test('MIME mismatches and unsupported formats never call the model', async (t) =
     const response = await fetch(url, {method: 'POST', headers: {'Content-Type': type}, body: '<svg/>'});
     assert([400, 415].includes(response.status));
   }
+  for (const body of [Buffer.from([255, 216, 255]), jpeg.subarray(0, -10), png]) {
+    const response = await fetch(url, {method: 'POST', headers: {'Content-Type': 'image/jpeg'}, body});
+    assert.equal(response.status, 400);
+  }
   assert.equal(calls.length, 0);
 });
 
@@ -66,14 +75,14 @@ test('malformed model output fails safely and empty recognition remains a valid 
   const response = await fetch(broken.url, {
     method: 'POST',
     headers: {'Content-Type': 'image/jpeg'},
-    body: Buffer.from([255, 216, 255]),
+    body: jpeg,
   });
   assert.equal(response.status, 502);
   const empty = await serve(t, '{"beans":[]}');
   const noFields = await fetch(empty.url, {
     method: 'POST',
     headers: {'Content-Type': 'image/jpeg'},
-    body: Buffer.from([255, 216, 255]),
+    body: jpeg,
   });
   assert.deepEqual((await noFields.json()).beans, []);
 });
@@ -109,7 +118,7 @@ test('the service permits five in-flight images and rejects a sixth without call
     fetch(url, {
       method: 'POST',
       headers: {'Content-Type': 'image/jpeg'},
-      body: Buffer.from([255, 216, 255]),
+      body: jpeg,
     });
   const requests = Array.from({length: 5}, send);
   for (let attempt = 0; started < 5 && attempt < 100; attempt++)
@@ -120,4 +129,23 @@ test('the service permits five in-flight images and rejects a sixth without call
   assert.equal(started, 5);
   release();
   for (const response of await Promise.all(requests)) assert.equal(response.status, 200);
+});
+
+test('a source cannot exhaust the global budget or spoof a proxy header in direct mode', async (t) => {
+  const direct = await serve(t, '{"beans":[]}');
+  const proxied = await serve(t, '{"beans":[]}', {trustLoopbackProxy: true});
+  const post = (url, ip) => fetch(url, {
+    method: 'POST', headers: {'Content-Type': 'image/jpeg', 'X-Real-IP': ip}, body: jpeg,
+  });
+  for (let index = 1; index <= 20; index++) {
+    assert.equal((await post(direct.url, '192.0.2.' + index)).status, 200);
+    assert.equal((await post(proxied.url, '192.0.2.1')).status, 200);
+  }
+  assert.equal((await post(direct.url, '192.0.2.21')).status, 429);
+  assert.equal((await post(proxied.url, '192.0.2.1')).status, 429);
+  for (let index = 2; index <= 6; index++) {
+    for (let count = 0; count < 20; count++) assert.equal((await post(proxied.url, '192.0.2.' + index)).status, 200);
+  }
+  assert.equal((await post(proxied.url, '192.0.2.7')).status, 429);
+  assert.equal(proxied.calls.length, 120);
 });

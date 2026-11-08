@@ -1,9 +1,12 @@
 import {createServer} from 'node:http';
+import {isIP} from 'node:net';
 import {pathToFileURL} from 'node:url';
+import sharp from 'sharp';
 import {parseRecognition} from './core/recognition.mjs';
 
 const maxImageBytes = 2 * 1024 * 1024;
 const hourlyLimit = 120;
+const sourceHourlyLimit = 20;
 const hourMs = 60 * 60 * 1000;
 const roastLevels = ['极浅烘', '浅烘', '中浅烘', '中烘', '中深烘', '深烘', '极深烘'];
 const instructions = [
@@ -22,7 +25,7 @@ const instructions = [
   '只输出 JSON，不要 Markdown、解释或额外字段。',
 ].join('\n');
 
-export function createVisionServer({baseUrl, model, apiKey}, fetchModel = fetch) {
+export function createVisionServer({baseUrl, model, apiKey, trustLoopbackProxy = false}, fetchModel = fetch) {
   const endpoint = new URL(baseUrl.replace(/\/$/, '') + '/chat/completions');
   if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password || endpoint.search || endpoint.hash ||
       !model || !apiKey) {
@@ -37,11 +40,25 @@ export function createVisionServer({baseUrl, model, apiKey}, fetchModel = fetch)
       response.end(JSON.stringify(data));
     };
     if (request.url !== '/api/vision') return send(404, {});
-    if (request.method === 'GET') return send(200, {enabled: true, provider: endpoint.hostname});
+    if (request.method === 'GET') return send(200, {enabled: true});
     if (request.method !== 'POST') return send(405, {});
     const mime = request.headers['content-type'];
     if (!['image/jpeg','image/png','image/webp'].includes(mime)) return send(415, {message: '请上传 JPEG、PNG 或 WebP 图片。'});
     if (Number(request.headers['content-length']) > maxImageBytes) return send(413, {});
+    const peer = request.socket.remoteAddress ?? '';
+    const forwarded = request.headers['x-real-ip'];
+    const loopback = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(peer);
+    const source = trustLoopbackProxy && loopback && typeof forwarded === 'string' && isIP(forwarded) ? forwarded : peer;
+    const limitMessage = () => {
+      const cutoff = Date.now() - hourMs;
+      while (upstreamStarts.length && upstreamStarts[0].at <= cutoff) upstreamStarts.shift();
+      if (upstreamStarts.length >= hourlyLimit) return '本小时识别次数已用完，请稍后重试。';
+      if (upstreamStarts.filter(entry => entry.source === source).length >= sourceHourlyLimit) {
+        return '当前网络的识别次数已用完，请稍后重试。';
+      }
+    };
+    const initialLimit = limitMessage();
+    if (initialLimit) return send(429, {message: initialLimit});
     if (active >= 5) return send(429, {message: '当前识别任务较多，请稍后重试。'});
     active++;
     const cancelled = new AbortController();
@@ -59,14 +76,19 @@ export function createVisionServer({baseUrl, model, apiKey}, fetchModel = fetch)
         chunks.push(chunk);
       }
       const image = Buffer.concat(chunks);
-      const jpeg = image[0] === 0xff && image[1] === 0xd8 && image[2] === 0xff;
-      const png = image.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
-      const webp = image.subarray(0,4).toString() === 'RIFF' && image.subarray(8,12).toString() === 'WEBP';
-      if (!(mime === 'image/jpeg' && jpeg || mime === 'image/png' && png || mime === 'image/webp' && webp)) return send(400, {message: '图片内容与格式不匹配。'});
-      const now = Date.now();
-      while (upstreamStarts.length && upstreamStarts[0] <= now - hourMs) upstreamStarts.shift();
-      if (upstreamStarts.length >= hourlyLimit) return send(429, {message: '本小时识别次数已用完，请稍后重试。'});
-      upstreamStarts.push(now);
+      try {
+        const decoder = sharp(image, {failOn: 'warning', limitInputPixels: 16_000_000});
+        const {format} = await decoder.metadata();
+        if ('image/' + format !== mime) return send(400, {message: '图片内容与格式不匹配。'});
+        // Reading metadata alone does not validate the image payload.
+        await decoder.stats();
+      } catch {
+        return send(400, {message: '图片无法解码或像素过多，请裁剪标签后重试。'});
+      }
+      if (cancelled.signal.aborted) return;
+      const limit = limitMessage();
+      if (limit) return send(429, {message: limit});
+      upstreamStarts.push({at: Date.now(), source});
       const upstream = await fetchModel(endpoint, {
         method: 'POST', redirect: 'error',
         headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey},
@@ -100,5 +122,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     baseUrl: env.CAFE_VISION_BASE_URL ?? '',
     model: env.CAFE_VISION_MODEL,
     apiKey: env.CAFE_VISION_API_KEY,
+    trustLoopbackProxy: env.CAFE_VISION_TRUST_LOOPBACK_PROXY === '1',
   }).listen(Number(env.CAFE_VISION_PORT ?? 1634), '127.0.0.1');
 }
