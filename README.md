@@ -15,7 +15,7 @@
 - 统计页显示已记录的消耗、花费、库存价值、库存预测和个人评分榜单。历史消费从记录功能启用后累计。
 - 数据页可以导出、校验并合并恢复 JSON 备份，包含豆档、图片、库存历史、品鉴和已保存的冲煮方案。同编号但内容不同的数据另存为副本，重复导入相同内容会跳过。
 
-资料保存在当前浏览器的 localStorage，跨设备迁移通过导出与导入备份完成。
+点右上角「账号」即可注册、登录、修改密码或退出。登录后，豆档、照片、库存历史、品鉴和冲煮方案会自动保存到服务器。同账号的其他设备在页面打开、回到前台或每 15 秒检查更新。草稿和进行中的冲煮计时保留在当前设备。本机模式仍可独立使用，登录后可在账号面板选择「合并本机资料」。
 
 ## 本地预览
 
@@ -23,7 +23,11 @@
 
 ## 部署
 
-使用静态站点服务，将本目录的 `index.html`、`preview.css`、`preview.mjs`、`workspace.mjs`、`importer.mjs`、`assets/app-icon.png`、`core/` 和生成的 `vendor/ocr/` 放到站点根目录。服务器需将 `.mjs` 作为 JavaScript 提供。目标地址为 `coffee.example.com`，需配置手机可访问的有效 HTTPS。
+使用静态站点服务，将本目录的 `index.html`、`preview.css`、`preview.mjs`、`workspace.mjs`、`importer.mjs`、`account.mjs`、`assets/app-icon.png`、`core/` 和生成的 `vendor/ocr/` 放到站点根目录。服务器需将 `.mjs` 作为 JavaScript 提供。目标地址为 `coffee.example.com`，需配置手机可访问的有效 HTTPS。
+
+## 账号服务
+
+在服务器安装生产依赖后运行 `node account-server.mjs`。设置 `CAFE_ACCOUNT_ORIGIN` 为站点的 HTTPS 来源，`CAFE_ACCOUNT_DB` 为站点目录之外的持久化 SQLite 文件路径，`CAFE_ACCOUNT_PORT` 默认是 1635。将同源的 `/api/account/` 转发到本机账号服务，并允许 16 MiB 请求体。如果本机代理负责覆盖 `X-Real-IP`，可设 `CAFE_ACCOUNT_TRUST_LOOPBACK_PROXY=1`。每个账号的数据上限为 16 MiB。备份服务器时使用 SQLite 的在线备份机制，以包含 WAL 中已提交的变更。
 
 ## iPhone 安装
 

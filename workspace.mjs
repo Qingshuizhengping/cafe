@@ -1,5 +1,6 @@
 import {units, uid, localDate, roastAge, flavorState, unitCost, undoStock,
-  saveTasting, deleteTasting, consumptionEvents, readBackup, mergeBackup} from './core/journal.mjs?v=6';
+  saveTasting, deleteTasting, consumptionEvents, readBackup, mergeBackup, validateRecords} from './core/journal.mjs?v=8';
+import {validateRecipes, validateStages} from './core/recipes.mjs?v=8';
 import {normalizeComponents} from './core/recognition.mjs';
 
 const $ = id => document.getElementById(id);
@@ -8,8 +9,6 @@ const grams = value => number.format(value) + ' g';
 const money = value => '¥' + number.format(value);
 const dateTime = value => new Date(value).toLocaleString('zh-CN', {hour12: false, month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'});
 const DIMENSIONS = {acidity: '酸度', sweetness: '甜感', bitterness: '苦感', body: '醇厚度'};
-const RECIPE_KEY = 'doudang-recipes-v1';
-const SESSION_KEY = 'doudang-brew-session';
 
 function node(tag, text, className) {
   const element = document.createElement(tag);
@@ -30,22 +29,6 @@ function definition(list, label, value) {
   list.append(node('dt', label), node('dd', String(value)));
 }
 
-function readRecipes(stored = localStorage.getItem(RECIPE_KEY)) {
-  return validateRecipes(JSON.parse(stored) ?? []);
-}
-
-function validateRecipes(recipes) {
-  if (!Array.isArray(recipes)) throw new Error('冲煮方案格式无效。');
-  return recipes.map(recipe => {
-    if (typeof recipe.id !== 'string' || typeof recipe.name !== 'string' || !recipe.name.trim() ||
-        !(Number(recipe.dose) > 0) || !(Number(recipe.water) > 0)) throw new Error('冲煮方案参数无效。');
-    validateStages(recipe.stages, Number(recipe.water));
-    return {id: recipe.id, name: recipe.name, dose: Number(recipe.dose), water: Number(recipe.water),
-      temp: String(recipe.temp ?? ''), grind: String(recipe.grind ?? ''), equipment: String(recipe.equipment ?? ''),
-      stages: recipe.stages.map(stage => ({end: Number(stage.end), water: Number(stage.water)}))};
-  });
-}
-
 function mergeRecipes(current, incoming) {
   const content = ({id, ...recipe}) => JSON.stringify(recipe);
   const next = [...current];
@@ -54,21 +37,6 @@ function mergeRecipes(current, incoming) {
     next.push(next.some(item => item.id === recipe.id) ? {...recipe, id: uid()} : recipe);
   }
   return next;
-}
-
-function validateStages(stages, water) {
-  if (!Array.isArray(stages) || !stages.length || stages.length > 12) throw new Error('请设置 1 到 12 个冲煮阶段。');
-  let previousTime = 0;
-  let previousWater = 0;
-  for (const stage of stages) {
-    if (!Number.isInteger(stage.end) || stage.end <= previousTime || stage.end > 3600 ||
-        !Number.isFinite(stage.water) || stage.water < previousWater || stage.water > water) {
-      throw new Error('各段结束时间须递增且不超过 3600 秒，累计水量须递增且不超过总水量。');
-    }
-    previousTime = stage.end;
-    previousWater = stage.water;
-  }
-  if (previousWater !== water) throw new Error('最后一段的累计水量应等于总水量。');
 }
 
 function downloadFile(fileName, value) {
@@ -80,7 +48,7 @@ function downloadFile(fileName, value) {
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
-export function createWorkspace({getRecords, mutate, withDataLock, setDockPage, openEditor, openLibrary, fieldLabels}) {
+export function createWorkspace({getRecords, getRecipes, mutate, changeData, sessionKey, setDockPage, openEditor, openLibrary, fieldLabels}) {
   let active = '';
   let selectedId;
   let tastingContext;
@@ -88,6 +56,7 @@ export function createWorkspace({getRecords, mutate, withDataLock, setDockPage, 
   let backupRead = 0;
   let confirmAction;
   let recipes = [];
+  const readRecipes = () => validateRecipes(getRecipes());
   try { recipes = readRecipes(); } catch {}
   let session;
   let lastAnnouncement;
@@ -417,29 +386,7 @@ export function createWorkspace({getRecords, mutate, withDataLock, setDockPage, 
     const imported = pendingImport;
     $('backup-file').disabled = $('backup-cancel').disabled = true;
     try {
-      await mutate(current => mergeBackup(current, imported.records), writeRecords => {
-        const previous = localStorage.getItem(RECIPE_KEY);
-        const current = readRecipes(previous);
-        const merged = mergeRecipes(current, imported.recipes);
-        const changed = merged.length !== current.length;
-        if (changed) localStorage.setItem(RECIPE_KEY, JSON.stringify(merged));
-        try {
-          writeRecords();
-        } catch (error) {
-          if (changed) {
-            try {
-              if (previous === null) localStorage.removeItem(RECIPE_KEY);
-              else localStorage.setItem(RECIPE_KEY, previous);
-            } catch {
-              recipes = merged;
-              updateRecipeOptions();
-              throw new Error('豆档未恢复，冲煮方案已写入。请保留备份，检查浏览器储存后重试。');
-            }
-          }
-          throw error;
-        }
-        recipes = merged;
-      });
+      await importLocal(imported);
     } finally {
       $('backup-file').disabled = $('backup-cancel').disabled = false;
     }
@@ -449,6 +396,20 @@ export function createWorkspace({getRecords, mutate, withDataLock, setDockPage, 
     $('data-feedback').textContent = '备份已合并导入，豆档与品鉴可在豆库中查看。';
     updateRecipeOptions();
   });
+
+  async function importLocal(imported) {
+    const incomingRecords = validateRecords(imported.records);
+    const incomingRecipes = validateRecipes(imported.recipes);
+    await changeData(current => {
+      const existingRecipes = validateRecipes(current.recipes);
+      const merged = mergeRecipes(existingRecipes, incomingRecipes);
+      return {
+        records: mergeBackup(current.records, incomingRecords),
+        recipes: merged.length === existingRecipes.length ? current.recipes : merged,
+      };
+    });
+    refreshRecipes();
+  }
 
   // Brewing uses elapsed wall-clock time so background tabs do not slow the timer.
   function stageInputs(stages) {
@@ -534,8 +495,8 @@ export function createWorkspace({getRecords, mutate, withDataLock, setDockPage, 
   }
 
   function saveSession() {
-    if (session) localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    else localStorage.removeItem(SESSION_KEY);
+    if (session) localStorage.setItem(sessionKey, JSON.stringify(session));
+    else localStorage.removeItem(sessionKey);
   }
 
   function renderTimer() {
@@ -618,12 +579,8 @@ export function createWorkspace({getRecords, mutate, withDataLock, setDockPage, 
     if (!name) throw new Error('请先填写方案名称。');
     const data = brewParams();
     const recipe = {...data, id: uid(), name};
-    await withDataLock(() => {
-      const next = validateRecipes([...readRecipes(), recipe]);
-      localStorage.setItem(RECIPE_KEY, JSON.stringify(next));
-      recipes = next;
-    });
-    updateRecipeOptions();
+    await changeData(current => ({...current, recipes: validateRecipes([...current.recipes, recipe])}));
+    refreshRecipes();
     $('brew-recipe').value = recipe.id;
     $('brew-feedback').textContent = '方案已保存。';
   });
@@ -635,18 +592,17 @@ export function createWorkspace({getRecords, mutate, withDataLock, setDockPage, 
   }
 
   $('nav-library').onclick = openLibrary;
-  window.addEventListener('storage', event => {
-    if (event.key !== RECIPE_KEY) return;
+  function refreshRecipes() {
     try {
       recipes = readRecipes();
       updateRecipeOptions();
     } catch {}
-  });
+  }
   for (const id of ['brewing','statistics','data-page']) $('nav-' + id).onclick = () => show(id);
   updateRecipeOptions();
   loadRecipe('three');
   try {
-    const restored = JSON.parse(localStorage.getItem(SESSION_KEY));
+    const restored = JSON.parse(localStorage.getItem(sessionKey));
     if (restored && getRecords().some(record => record.id === restored.beanId && !(record.tastings ?? []).some(note => note.id === restored.noteId)) && Number.isFinite(restored.elapsed) && restored.elapsed >= 0 &&
         (restored.startedAt === null || (Number.isFinite(restored.startedAt) && restored.startedAt <= Date.now()))) {
       validateStages(restored.stages, restored.water);
@@ -658,5 +614,5 @@ export function createWorkspace({getRecords, mutate, withDataLock, setDockPage, 
   } catch { $('brew-feedback').textContent = '上次计时未能恢复，可以重新开始。'; }
   renderTimer();
   setInterval(() => {if (session?.startedAt) renderTimer();}, 500);
-  return {hide, show, openDetail, refresh};
+  return {hide, show, openDetail, refresh, refreshRecipes, importLocal};
 }

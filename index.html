@@ -9,8 +9,8 @@
 <title>豆档 · 咖啡豆录入</title>
 <link rel="icon" type="image/png" href="./assets/app-icon.png">
 <link rel="apple-touch-icon" sizes="180x180" href="./assets/app-icon.png">
-<link rel="stylesheet" href="./preview.css?v=7">
-<script type="module" src="./preview.mjs?v=7"></script>
+<link rel="stylesheet" href="./preview.css?v=8">
+<script type="module" src="./preview.mjs?v=8"></script>
 </head>
 <body>
 <header class="site-header">
@@ -21,6 +21,7 @@
 我的豆库
 </button>
 <span class="nav-context" id="nav-context"></span>
+<button id="account-open" type="button" aria-haspopup="dialog" disabled>账号</button>
 </nav>
 </header>
 <main class="shell">
@@ -122,9 +123,27 @@
 <section class="info-section"><h2>导出备份</h2><p>下载 JSON 备份，包含当前全部豆档与已保存的冲煮方案。</p><button id="backup-export" type="button" class="primary">导出全部数据</button></section>
 <section class="info-section"><h2>恢复备份</h2><p>选择豆档导出的 JSON 文件。确认前会显示导入数量，已有数据保留，内容不同的同编号豆档会另存为副本。</p><label class="file-label">选择备份<input id="backup-file" type="file" accept=".json,application/json"></label><div id="import-preview" hidden><p id="import-summary"></p><div class="action-row"><button id="backup-confirm" class="primary" type="button">确认合并导入</button><button id="backup-cancel" type="button">取消</button></div></div></section>
 <p id="data-feedback" class="feedback" role="status"></p>
-<p class="supporting">资料保存在当前浏览器。更换设备或清理浏览器数据前，请导出备份。旧豆档会从本次更新后开始积累消耗与品鉴历史。</p>
+<p class="supporting">登录后资料自动同步到服务器。本机模式的资料保存在当前浏览器，登录后可以合并到账号。</p>
 </section>
 </main>
+<dialog id="account-dialog" class="account-dialog" aria-labelledby="account-title">
+<div class="import-job-header"><h2 id="account-title">账号与同步</h2><button id="account-close" type="button">关闭</button></div>
+<p id="account-mode" class="account-mode"></p>
+<p id="account-status" class="supporting" role="status"></p>
+<form id="account-form" class="workspace-form">
+<div id="account-credentials" class="account-fields">
+<label id="account-name-field">账号名<input id="account-name" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" pattern="[A-Za-z0-9][A-Za-z0-9_\-]{2,31}" maxlength="32" required></label>
+<label><span id="account-password-label">密码</span><input id="account-password" type="password" autocomplete="current-password" maxlength="256" required></label>
+<label id="account-new-field" hidden>新密码<input id="account-new" type="password" autocomplete="new-password" minlength="10" maxlength="256" required disabled></label>
+<div class="action-row"><button id="account-submit" class="primary" type="submit">登录</button><button id="account-switch" class="secondary" type="button">创建账号</button></div>
+</div>
+</form>
+<div id="account-options" hidden>
+<p class="supporting">本机豆档可以合并到账号。同编号但资料不同的豆档会另存副本。</p>
+<div class="action-row"><button id="account-local-import" class="primary" type="button">合并本机资料</button><button id="account-password-open" class="secondary" type="button">修改密码</button><button id="account-logout" type="button">退出登录</button></div>
+</div>
+<p id="account-feedback" class="feedback" role="status"></p>
+</dialog>
 <dialog id="camera-dialog" aria-labelledby="camera-title">
 <div class="import-job-header"><h2 id="camera-title">拍摄豆袋标签</h2><button id="camera-close" type="button">关闭</button></div>
 <video id="camera-preview" autoplay muted playsinline aria-label="相机实时预览"></video>

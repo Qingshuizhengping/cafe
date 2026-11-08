@@ -1,12 +1,15 @@
 {
   "name": "cafe",
   "private": true,
-  "engines": {"node": ">=20.20"},
+  "engines": {
+    "node": ">=20.20"
+  },
   "scripts": {
     "prepare:ocr": "node prepare-ocr.mjs",
     "test": "node --test"
   },
   "dependencies": {
+    "better-sqlite3": "12.8.0",
     "sharp": "0.34.5"
   },
   "devDependencies": {

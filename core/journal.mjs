@@ -188,6 +188,11 @@ export function readBackup(text) {
   if ((!Array.isArray(file) && (file?.format !== 'doudang' || file?.version !== 1)) || !Array.isArray(list)) {
     throw new Error('文件不是支持的豆档备份。');
   }
+  return validateRecords(list);
+}
+
+export function validateRecords(list) {
+  if (!Array.isArray(list)) throw new Error('豆库格式无效。');
   const records = list.map(validateRecord);
   if (new Set(records.map(record => record.id)).size !== records.length) throw new Error('备份中存在重复豆档编号。');
   return records;

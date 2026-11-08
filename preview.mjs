@@ -1,6 +1,7 @@
 import {scanLabel} from './core/scan.mjs?v=6';
-import {recordStock, flavorState, unitCost, undoStock, readBackup} from './core/journal.mjs?v=6';
-import {createWorkspace} from './workspace.mjs?v=7';
+import {recordStock, flavorState, unitCost, undoStock, readBackup} from './core/journal.mjs?v=8';
+import {createWorkspace} from './workspace.mjs?v=8';
+import {createAccountStorage} from './account.mjs?v=8';
 import {createCamera, createImporter, componentEditor, recognizeFile} from './importer.mjs?v=5';
 import {normalizeComponents} from './core/recognition.mjs';
 
@@ -99,7 +100,6 @@ const components = componentEditor(componentGroup);
 $('fields').append(componentGroup);
 fieldLabels.set('components', '拼配成分');
 
-const key = 'doudang-preview-records';
 const draftKey = 'doudang-draft:';
 let editing = null;
 let originalValues = {};
@@ -118,24 +118,12 @@ let workspace;
 let importer;
 let pendingImportId;
 
-function readRecords() {
-  const stored = JSON.parse(localStorage.getItem(key));
-  return Array.isArray(stored) ? stored : [];
-}
+const account = await createAccountStorage();
+const readRecords = () => account.current().records;
 
-function withDataLock(action) {
-  return navigator.locks ? navigator.locks.request(key, action) : action();
-}
-
-function updateRecords(update, commit) {
-  return withDataLock(() => {
-    const next = update(readRecords());
-    const serialized = JSON.stringify(next);
-    const write = () => localStorage.setItem(key, serialized);
-    if (commit) commit(write);
-    else write();
-    records = next;
-  });
+async function updateRecords(update) {
+  const next = await account.change(current => ({...current, records: update(current.records)}));
+  records = next.records;
 }
 
 try {
@@ -177,7 +165,7 @@ function setCapture(visible) {
 }
 
 function draftId(id = editing) {
-  return draftKey + (id ?? 'new');
+  return account.deviceKey(draftKey + (id ?? 'new'));
 }
 
 function readDraft(id) {
@@ -1029,8 +1017,13 @@ $('library-filter').onchange = renderLibrary;
 for (const id of ['library-sort','phase-filter','category-filter','group-filter']) $(id).onchange = renderLibrary;
 workspace = createWorkspace({
   getRecords: () => records,
-  mutate: async (update, commit) => { await updateRecords(update, commit); renderLibrary(); },
-  withDataLock,
+  mutate: async update => { await updateRecords(update); renderLibrary(); },
+  getRecipes: () => account.current().recipes,
+  changeData: async update => {
+    records = (await account.change(update)).records;
+    renderLibrary();
+  },
+  sessionKey: account.deviceKey('doudang-brew-session'),
   setDockPage,
   openEditor: openRecord,
   openLibrary: () => { records = readRecords(); renderLibrary(); showLibrary(true); },
@@ -1057,13 +1050,14 @@ importer = createImporter({
     applyRecognition(bean.fields);
   },
 });
-window.addEventListener('storage', event => {
-  if (event.key === key) {
-    try { records = readRecords(); renderLibrary(); }
-    catch { $('library-status').textContent = '读取更新失败，请重新打开应用。'; }
-  }
+account.connect(({records: current}) => {
+  records = current;
+  workspace.refreshRecipes();
+  renderLibrary();
 });
+account.connectDialog(account.user ? workspace.importLocal : null);
+$('account-open').disabled = false;
 renderLibrary();
-if (records.length) showLibrary(true, false);
+if (records.length || (account.user && !readDraft(null))) showLibrary(true, false);
 else if (readDraft(null)) openRecord();
 

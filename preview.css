@@ -60,6 +60,12 @@ main{padding-bottom:calc(100px + env(safe-area-inset-bottom))}
 .bar{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:60px}
 .brand{font-size:20px;font-weight:750;white-space:nowrap}
 .bar button{border-radius:22px;font-size:14px;font-weight:650}
+#account-open{margin-inline-start:auto;color:var(--muted)}
+.account-dialog{width:min(420px,calc(100% - 32px))}
+.account-mode{margin:10px 0 2px;font-weight:700;overflow-wrap:anywhere}
+.account-fields{display:grid;gap:10px}
+.account-fields .action-row{margin-bottom:0}
+.account-dialog #account-feedback:empty{margin:0}
 #library-toggle{display:inline-flex;align-items:center;gap:4px;padding-inline:8px 12px}
 #library-toggle svg{width:16px;height:16px;flex:none}
 button,input,select,textarea{font:inherit;color:inherit}
