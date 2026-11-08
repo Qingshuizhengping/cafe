@@ -2,7 +2,7 @@
 
 ![豆档 · 咖啡豆库与冲煮记录，右侧展示豆档深色界面](./assets/github-cover.jpg)
 
-拍摄咖啡豆包装或从相册选图，照片默认交给 GLM 识别，结果自动填入豆档。核对后保存到本机豆库。GLM 不可用或没有读到字段时，改用浏览器内的 OCR。
+豆档是一款个人咖啡豆库。拍下豆袋标签，核对识别结果后入库，再记录余量、养豆天数、冲煮与品鉴。支持浅色和深色界面，也可添加到 iPhone 主屏幕。
 
 在「批量 / JSON 导入」中可选最多 5 张照片，逐张查看识别状态、原文并重试。单图的多豆结果会分别列出，照片附给第一颗豆。可粘贴单个豆档或对象数组，核对必填字段后再入库。未提供余量时按净含量初始化。相机预览会在设备支持时显示缩放和闪光灯，系统相机可作为备用入口。
 
@@ -15,7 +15,11 @@
 - 统计页显示已记录的消耗、花费、库存价值、库存预测和个人评分榜单。历史消费从记录功能启用后累计。
 - 数据页可以导出、校验并合并恢复 JSON 备份，包含豆档、图片、库存历史、品鉴和已保存的冲煮方案。同编号但内容不同的数据另存为副本，重复导入相同内容会跳过。
 
-点右上角「账号」即可注册、登录、修改密码或退出。登录后，豆档、照片、库存历史、品鉴和冲煮方案会自动保存到服务器。同账号的其他设备在页面打开、回到前台或每 15 秒检查更新。草稿和进行中的冲煮计时保留在当前设备。本机模式仍可独立使用，登录后可在账号面板选择「合并本机资料」。
+## 识别与数据
+
+启用 GLM 后，选中的豆袋照片会由服务器转发给配置的模型供应商。单张照片在 GLM 不可用或未识别到可用字段时，可以回退到浏览器内的 OCR。
+
+本机模式将资料保存在当前浏览器。登录后，豆档、照片、库存历史、品鉴和冲煮方案会同步到部署者的服务器。草稿和正在进行的冲煮计时保留在当前设备。可在账号面板选择「合并本机资料」，也可随时导出 JSON 备份。
 
 ## 本地预览
 
@@ -23,29 +27,19 @@
 
 ## 部署
 
-使用静态站点服务，将本目录的 `index.html`、`preview.css`、`preview.mjs`、`workspace.mjs`、`importer.mjs`、`account.mjs`、`assets/app-icon.png`、`core/` 和生成的 `vendor/ocr/` 放到站点根目录。服务器需将 `.mjs` 作为 JavaScript 提供。目标地址为 `coffee.example.com`，需配置手机可访问的有效 HTTPS。
+将 `index.html`、`preview.css`、`preview.mjs`、`workspace.mjs`、`importer.mjs`、`account.mjs`、`assets/app-icon.png`、`core/` 和生成的 `vendor/ocr/` 放到静态站点根目录。站点需使用有效的 HTTPS，并以 JavaScript 类型提供 `.mjs` 文件。
 
 ## 账号服务
 
-在服务器安装生产依赖后运行 `node account-server.mjs`。设置 `CAFE_ACCOUNT_ORIGIN` 为站点的 HTTPS 来源，`CAFE_ACCOUNT_DB` 为站点目录之外的持久化 SQLite 文件路径，`CAFE_ACCOUNT_PORT` 默认是 1635。将同源的 `/api/account/` 转发到本机账号服务，并允许 16 MiB 请求体。如果本机代理负责覆盖 `X-Real-IP`，可设 `CAFE_ACCOUNT_TRUST_LOOPBACK_PROXY=1`。每个账号的数据上限为 16 MiB。备份服务器时使用 SQLite 的在线备份机制，以包含 WAL 中已提交的变更。
+在服务器安装生产依赖后运行 `node account-server.mjs`。将 `CAFE_ACCOUNT_ORIGIN` 设为自己的 HTTPS 站点来源，例如 `https://coffee.example.com`，将 `CAFE_ACCOUNT_DB` 设为静态站点目录之外的持久化 SQLite 文件路径。通过同源代理转发 `/api/account/`，并允许 16 MiB 请求体。使用 SQLite 在线备份机制备份账号数据。
 
 ## iPhone 安装
 
-在 iPhone 的 Safari 中下载[豆档描述文件](https://coffee.example.com/doudang.mobileconfig)，然后进入「设置 → 已下载描述文件」安装。
-
-也可以运行 `node make-profile.mjs <实际 HTTPS 网址>` 生成 `doudang.mobileconfig`，默认内嵌豆档图标，也可在网址后附上自定义 PNG 图标路径。通过站点分发时，为描述文件设置 MIME 类型 `application/x-apple-aspen-config`。描述文件只包含可移除的全屏 Web Clip。
+用自己的站点地址运行 `node make-profile.mjs https://coffee.example.com/`，生成带豆档图标的 `doudang.mobileconfig`。将描述文件放到自己的站点上，并设置 MIME 类型为 `application/x-apple-aspen-config`。在 iPhone 的 Safari 中下载后，前往「设置 → 已下载描述文件」安装。
 
 ## GLM 识别
 
-在识别服务目录放置 `package.json` 与 `package-lock.json`，运行 `npm ci --omit=dev` 安装依赖，再用 Node.js 20.20 或更新版本运行 `vision-server.mjs`。在服务端环境中配置：
-
-- `CAFE_VISION_BASE_URL` 为兼容接口的 HTTPS Base URL，包含接口的版本路径。
-- `CAFE_VISION_MODEL` 为可读取图片的模型名。
-- `CAFE_VISION_API_KEY` 为供应商密钥。
-- `CAFE_VISION_PORT` 默认为 1634，服务只监听本机。
-- `CAFE_VISION_TRUST_LOOPBACK_PROXY` 默认为关闭。只有本机反向代理会覆盖客户端提供的 `X-Real-IP` 时才设为 `1`。Nginx 在识别路由内使用 `proxy_set_header X-Real-IP $remote_addr;`。
-
-通过站点的 HTTPS 反向代理将 `/api/vision` 转给该进程，允许最多 2 MiB 的请求体。部署识别进程时将 `core/recognition.mjs` 放在 `vision-server.mjs` 的相对路径下。服务最多同时处理 5 张照片。每个来源 IP 每小时最多发起 20 次模型请求，整个进程最多 120 次。
+在服务器安装生产依赖后，用 Node.js 20.20 或更新版本运行 `vision-server.mjs`，并将站点的 `/api/vision` 转发到识别服务。使用服务端环境变量配置供应商的 HTTPS 接口、视觉模型和 API 密钥，变量名可查看 [服务端配置入口](./vision-server.mjs)。实际密钥和服务端配置应保存在部署环境中。
 
 ## 致谢
 
