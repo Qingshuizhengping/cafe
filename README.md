@@ -1,5 +1,7 @@
 # 豆档
 
+![豆档 · 咖啡豆库与冲煮记录，右侧展示豆档深色界面](./assets/github-cover.jpg)
+
 拍摄咖啡豆包装或从相册选图，照片默认交给 GLM 识别，结果自动填入豆档。核对后保存到本机豆库。GLM 不可用或没有读到字段时，改用浏览器内的 OCR。
 
 在「批量 / JSON 导入」中可选最多 5 张照片，逐张查看识别状态、原文并重试。单图的多豆结果会分别列出，照片附给第一颗豆。可粘贴单个豆档或对象数组，核对必填字段后再入库。未提供余量时按净含量初始化。相机预览会在设备支持时显示缩放和闪光灯，系统相机可作为备用入口。
@@ -21,13 +23,13 @@
 
 ## 部署
 
-使用静态站点服务，将本目录的 `index.html`、`preview.css`、`preview.mjs`、`workspace.mjs`、`importer.mjs`、`core/` 和生成的 `vendor/ocr/` 放到站点根目录。服务器需将 `.mjs` 作为 JavaScript 提供。目标地址为 `coffee.example.com`，需配置手机可访问的有效 HTTPS。
+使用静态站点服务，将本目录的 `index.html`、`preview.css`、`preview.mjs`、`workspace.mjs`、`importer.mjs`、`assets/app-icon.png`、`core/` 和生成的 `vendor/ocr/` 放到站点根目录。服务器需将 `.mjs` 作为 JavaScript 提供。目标地址为 `coffee.example.com`，需配置手机可访问的有效 HTTPS。
 
 ## iPhone 安装
 
 在 iPhone 的 Safari 中下载[豆档描述文件](https://coffee.example.com/doudang.mobileconfig)，然后进入「设置 → 已下载描述文件」安装。
 
-也可以运行 `node make-profile.mjs <实际 HTTPS 网址>` 生成 `doudang.mobileconfig`。通过站点分发时，为描述文件设置 MIME 类型 `application/x-apple-aspen-config`。描述文件只包含可移除的全屏 Web Clip。
+也可以运行 `node make-profile.mjs <实际 HTTPS 网址>` 生成 `doudang.mobileconfig`，默认内嵌豆档图标，也可在网址后附上自定义 PNG 图标路径。通过站点分发时，为描述文件设置 MIME 类型 `application/x-apple-aspen-config`。描述文件只包含可移除的全屏 Web Clip。
 
 ## GLM 识别
 

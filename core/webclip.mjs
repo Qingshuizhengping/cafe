@@ -8,7 +8,7 @@ export function webClipProfile(address, iconBase64 = '') {
     throw new Error('请输入 iPhone 可以打开的 HTTPS 网址。');
   }
   if (!/^[A-Za-z0-9+/]*={0,2}$/.test(iconBase64)) throw new Error('图标格式无效。');
-  const icon = iconBase64 ? '<key>Icon</key><data>' + iconBase64 + '</data>' : '';
+  const icon = iconBase64 ? '<key>Icon</key><data>' + iconBase64 + '</data>\n<key>Precomposed</key><true/>' : '';
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>

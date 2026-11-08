@@ -7,7 +7,7 @@ if (!address) {
   process.exitCode = 1;
 } else {
   try {
-    const icon = iconPath ? (await readFile(iconPath)).toString('base64') : '';
+    const icon = (await readFile(iconPath ?? new URL('./assets/app-icon.png', import.meta.url))).toString('base64');
     const file = new URL('./doudang.mobileconfig', import.meta.url);
     await writeFile(file, webClipProfile(address, icon));
     console.log('已生成 doudang.mobileconfig');
