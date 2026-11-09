@@ -1,6 +1,6 @@
 import {scanLabel} from './core/scan.mjs?v=6';
 import {recordStock, flavorState, unitCost, undoStock, readBackup} from './core/journal.mjs?v=8';
-import {createWorkspace} from './workspace.mjs?v=8';
+import {createWorkspace} from './workspace.mjs?v=9';
 import {createAccountStorage} from './account.mjs?v=8';
 import {createCamera, createImporter, componentEditor, recognizeFile} from './importer.mjs?v=5';
 import {normalizeComponents} from './core/recognition.mjs';
@@ -154,8 +154,10 @@ function showLibrary(visible, focus = true) {
   $('brand').hidden = !visible;
   $('library-toggle').hidden = visible;
   setDockPage(visible ? 'library' : null);
+  const heading = $(visible ? 'library-title' : 'editor-title');
+  document.title = '豆档 · ' + heading.textContent;
   window.scrollTo(0, 0);
-  if (focus) $(visible ? 'library-title' : 'editor-title').focus({preventScroll: true});
+  if (focus) heading.focus({preventScroll: true});
 }
 
 function setCapture(visible) {
@@ -326,20 +328,23 @@ document.addEventListener('pointerdown', event => {
   if (!event.target.closest('.bean-row, dialog')) closeBeanActions?.();
 });
 document.addEventListener('keydown', event => {
-  if (event.key === 'Escape' && !document.querySelector('dialog[open]')) closeBeanActions?.(true);
+  if (event.key === 'Escape' && !document.querySelector('dialog[open]')) {
+    closeBeanActions?.(document.activeElement === document.body);
+  }
 });
 
-function beanActionRow(card, controls, record) {
+function beanActionRow(card, controls, record, index) {
   const wrapper = document.createElement('div');
   wrapper.className = 'bean-row';
   const actions = document.createElement('div');
   actions.className = 'bean-actions';
-  actions.inert = true;
+  actions.id = 'bean-actions-' + index;
   const more = document.createElement('button');
   more.type = 'button';
   more.className = 'bean-more';
-  more.textContent = '⋯';
+  more.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>';
   more.setAttribute('aria-label', '更多操作 · ' + record.values.name);
+  more.setAttribute('aria-controls', actions.id);
   const pin = document.createElement('button');
   pin.type = 'button';
   pin.textContent = record.pinnedAt ? '取消置顶' : '置顶';
@@ -349,33 +354,41 @@ function beanActionRow(card, controls, record) {
   remove.textContent = '删除';
   const actionName = document.createElement('div');
   actionName.className = 'bean-action-name';
-  actionName.textContent = card.querySelector('.record').textContent;
+  actionName.textContent = record.values.name;
+  const dismiss = document.createElement('button');
+  dismiss.type = 'button';
+  dismiss.textContent = '收起';
+  dismiss.onclick = () => close(true);
+  const actionHeader = document.createElement('div');
+  actionHeader.className = 'bean-action-header';
+  actionHeader.append(actionName, dismiss);
   pin.setAttribute('aria-label', pin.textContent + ' · ' + record.values.name);
   remove.setAttribute('aria-label', '删除 · ' + record.values.name);
   const actionButtons = document.createElement('div');
   actionButtons.className = 'bean-action-buttons';
   actionButtons.append(pin, remove);
-  actions.append(actionName, actionButtons);
+  actions.append(actionHeader, actionButtons);
   controls.append(more);
-  wrapper.append(actions, card);
+  wrapper.append(card, actions);
+  const cardButtons = card.querySelectorAll('button');
 
   function setOpen(open) {
     if (open && closeBeanActions !== close) closeBeanActions?.();
     wrapper.classList.toggle('is-open', open);
     actions.inert = !open;
+    for (const button of cardButtons) button.inert = open;
     more.setAttribute('aria-expanded', String(open));
     closeBeanActions = open ? close : closeBeanActions === close ? undefined : closeBeanActions;
   }
   function close(returnFocus = false) {
-    if (returnFocus || actions.contains(document.activeElement)) more.focus();
+    const restoreFocus = returnFocus || actions.contains(document.activeElement);
     setOpen(false);
+    if (restoreFocus) more.focus({preventScroll: true});
   }
   setOpen(false);
   more.onclick = () => {
-    if (actions.inert) {
-      setOpen(true);
-      pin.focus();
-    } else close();
+    setOpen(true);
+    pin.focus({preventScroll: true});
   };
   pin.onclick = async () => {
     pin.disabled = true;
@@ -427,7 +440,12 @@ function beanActionRow(card, controls, record) {
     if (gesture.dragging) {
       suppressClickUntil = Date.now() + 400;
       const threshold = actions.offsetWidth * (gesture.start > 0 ? 0.65 : 0.35);
-      setOpen(event.type === 'pointerup' ? gesture.offset >= threshold : gesture.start > 0);
+      const open = event.type === 'pointerup' ? gesture.offset >= threshold : gesture.start > 0;
+      const focusWasInCard = card.contains(document.activeElement);
+      if (open) {
+        setOpen(true);
+        if (focusWasInCard) pin.focus({preventScroll: true});
+      } else close();
       wrapper.classList.remove('is-dragging');
       card.style.removeProperty('--drag-offset');
     }
@@ -464,7 +482,7 @@ $('confirm-delete-bean').onclick = async () => {
   }
 };
 
-function renderLibrary() {
+function renderLibrary(announceResults = false) {
   closeBeanActions = undefined;
   const undo = records.find(record => record.undoDeduction);
   $('undo-deduct').hidden = !undo;
@@ -506,10 +524,13 @@ function renderLibrary() {
     if (sort === 'name') return a.values.name.localeCompare(b.values.name, 'zh-CN');
     return 0;
   });
+  $('library-results').textContent = announceResults
+    ? (visibleRecords.length ? '找到 ' + visibleRecords.length + ' 份豆档。' : '没有符合条件的咖啡豆。')
+    : '';
   $('entries').classList.toggle('bean-grid', visibleRecords.length > 0);
   if (!visibleRecords.length) $('entries').textContent = records.length ? '没有符合条件的咖啡豆。' : '还没有保存的咖啡豆。';
   const now = new Date();
-  for (const record of visibleRecords) {
+  for (const [index, record] of visibleRecords.entries()) {
     const {values} = record;
     const row = document.createElement('article');
     row.className = 'bean-card';
@@ -550,10 +571,13 @@ function renderLibrary() {
       : '养豆 ' + age + ' 天';
     metrics.append(beanMetric('', ageValue), beanMetric('剩余及总重量 ', stock), beanMetric('单克价 ', price));
     const context = [record.pinnedAt ? '已置顶' : '', values.origin, remaining === 0 ? '已用完' : '', readDraft(record.id) ? '有草稿' : ''].filter(Boolean);
+    const identity = document.createElement('div');
+    identity.className = 'bean-identity';
+    identity.append(button);
     if (context.length) {
       const detail = document.createElement('small');
       detail.textContent = context.join(' · ');
-      button.append(detail);
+      identity.append(detail);
     }
     const deduct = document.createElement('button');
     deduct.className = 'deduct-button';
@@ -574,14 +598,15 @@ function renderLibrary() {
     const controls = document.createElement('div');
     controls.className = 'bean-controls';
     controls.append(deduct);
-    row.append(media, button, metrics, controls);
+    row.append(media, identity, metrics);
     if (remaining > 0) {
       const phase = document.createElement('small');
       phase.className = 'bean-phase';
       phase.textContent = flavorState(values).label;
       row.append(phase);
     }
-    $('entries').append(beanActionRow(row, controls, record));
+    row.append(controls);
+    $('entries').append(beanActionRow(row, controls, record, index));
   }
   workspace?.refresh();
 }
@@ -1012,9 +1037,9 @@ $('library-toggle').onclick = () => {
   showLibrary(true);
 };
 $('new-entry').onclick = () => openRecord();
-$('library-search').oninput = renderLibrary;
-$('library-filter').onchange = renderLibrary;
-for (const id of ['library-sort','phase-filter','category-filter','group-filter']) $(id).onchange = renderLibrary;
+$('library-search').oninput = () => renderLibrary(true);
+for (const id of ['library-filter','phase-filter','category-filter','group-filter']) $(id).onchange = () => renderLibrary(true);
+$('library-sort').onchange = () => renderLibrary();
 workspace = createWorkspace({
   getRecords: () => records,
   mutate: async update => { await updateRecords(update); renderLibrary(); },

@@ -94,8 +94,11 @@ export function createWorkspace({getRecords, getRecipes, mutate, changeData, ses
     $('nav-context').textContent = id === 'bean-detail' ? '豆档详情' : '';
     setDockPage(id === 'bean-detail' ? 'library' : id);
     refresh();
+    if (active !== id) return;
+    const heading = $(id).querySelector('h1');
+    document.title = '豆档 · ' + heading.textContent;
     window.scrollTo(0, 0);
-    $(id).querySelector('h1').focus({preventScroll: true});
+    heading.focus({preventScroll: true});
   }
 
   function openDetail(record) {

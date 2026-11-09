@@ -4,15 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f2f2">
-<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#141414">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f4f6">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#141518">
 <title>豆档 · 咖啡豆录入</title>
 <link rel="icon" type="image/png" href="./assets/app-icon.png">
 <link rel="apple-touch-icon" sizes="180x180" href="./assets/app-icon.png">
-<link rel="stylesheet" href="./preview.css?v=8">
-<script type="module" src="./preview.mjs?v=8"></script>
+<link rel="stylesheet" href="./preview.css?v=9">
+<script type="module" src="./preview.mjs?v=9"></script>
 </head>
 <body>
+<a class="skip-link" href="#main-content">跳到主要内容</a>
 <header class="site-header">
 <nav class="shell bar" aria-label="豆档导航">
 <span id="brand" class="brand" hidden>豆档</span>
@@ -24,7 +25,7 @@
 <button id="account-open" type="button" aria-haspopup="dialog" disabled>账号</button>
 </nav>
 </header>
-<main class="shell">
+<main class="shell" id="main-content" tabindex="-1">
 <section id="editor">
 <h1 id="editor-title" tabindex="-1">添加咖啡豆</h1>
 <p class="intro" id="editor-intro">拍下包装标签，核对识别结果后保存。</p>
@@ -71,12 +72,15 @@
 </section>
 <section id="library" hidden>
 <div class="library-heading">
-<div><h1 id="library-title" tabindex="-1">我的豆库</h1><p class="library-count">共 <span id="count">0</span> 份豆档 · 共 <span id="stock-total">0</span>&nbsp;g 库存</p></div>
+<div><h1 id="library-title" tabindex="-1">我的豆库</h1><p class="library-count"><span>共 <span id="count">0</span> 份豆档</span><span>共 <strong><span id="stock-total">0</span>&nbsp;g</strong> 库存</span></p></div>
 <div class="library-entry-actions"><button class="primary" id="new-entry" type="button">添加咖啡豆</button><button class="secondary" id="batch-open" type="button">批量 / JSON 导入</button></div>
 </div>
 <div class="library-feedback"><p id="library-status" role="status"></p><button id="undo-deduct" type="button" hidden>撤销减豆</button></div>
 <div id="library-tools" class="library-tools" hidden>
+<div class="library-search">
+<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 4 4"/></svg>
 <label for="library-search" class="sr-only">搜索豆库</label><input id="library-search" type="search" placeholder="搜索名称、产地或烘焙商">
+</div>
 <label for="library-filter" class="sr-only">库存状态</label><select id="library-filter"><option value="">全部库存</option><option value="available">还有余量</option><option value="empty">已用完</option></select>
 <label for="library-sort" class="sr-only">排序</label><select id="library-sort"><option value="recent">最近添加</option><option value="age">烘焙日期</option><option value="remaining">剩余克数</option><option value="price">单克价</option><option value="rating">个人评分</option><option value="name">名称</option></select>
 </div>
@@ -85,6 +89,7 @@
 <label>分类<select id="category-filter"><option value="">全部分类</option><option>手冲</option><option>意式</option><option>全能</option></select></label>
 <label>分组<select id="group-filter"><option value="">全部分组</option></select></label>
 </div></details>
+<p id="library-results" class="sr-only" role="status"></p>
 <div id="entries"></div>
 </section>
 <section id="bean-detail" hidden aria-labelledby="detail-title">
