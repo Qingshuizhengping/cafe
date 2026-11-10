@@ -493,3 +493,54 @@ dialog .dialog-actions{position:sticky;bottom:-22px;background:var(--surface);pa
 .component-row summary{cursor:pointer;min-height:44px;align-content:center;font-size:14px;font-weight:600}
 .component-row .form-pair label{font-size:13px;display:grid;gap:4px;min-width:0}
 .component-row input{border-color:var(--control-edge);background:var(--surface)}
+
+.brew-fit-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin:0;font-size:14px}
+.brew-fit-row .text-action{margin:0}
+#brew-ratio-readout{font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+#brew-timeline-hint{display:block;margin-top:4px;font-variant-numeric:tabular-nums}
+.brew-metrics{font-size:13px;color:var(--muted);margin:0 0 12px;font-variant-numeric:tabular-nums}
+#tasting-brew-facts{margin:8px 0 0;font-variant-numeric:tabular-nums}
+
+/* 冲煮数据：电子秤曲线与读数卡 */
+.brew-scale-panel{max-width:600px;margin:24px 0;padding:20px;background:var(--surface);border-radius:20px}
+.brew-scale-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.brew-scale-head h2{margin:0;font-size:var(--type-section)}
+.brew-scale-head p{margin:4px 0 0;font-size:var(--type-caption)}
+.brew-scale-head .text-action{margin:0;flex-shrink:0}
+.brew-scale-links .action-row{margin:16px 0 0;gap:8px 12px}
+.brew-scale-links #brew-scale-status{margin:0;flex:1 1 180px;min-width:0}
+#brew-scale-hint:empty{display:none}
+.brew-dim{display:grid;gap:6px;font-size:14px;font-weight:550;margin-top:12px}
+.brew-dim input{border-color:var(--control-edge);background:var(--surface)}
+.brew-chart{position:relative;margin-top:16px;border:1px solid var(--rule);border-radius:16px;padding:12px 12px 4px}
+.brew-chart-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.brew-chart-legend{display:flex;gap:8px;flex-wrap:wrap}
+.brew-chart .chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:5px 14px;border-radius:999px;border:1px solid transparent;color:#fff;min-height:32px}
+.brew-chart .chip i{width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.85}
+.brew-chart .chip.is-water{background:#3b6fd4}
+.brew-chart .chip.is-flow{background:#17a06a}
+.brew-chart .chip.is-off{background:var(--rule);color:var(--muted)}
+.brew-chart .chip[aria-pressed="false"]{text-decoration:line-through}
+.brew-chart-frame{position:relative;display:block}
+#brew-chart-svg{display:block;width:100%;height:auto;aspect-ratio:2/1;min-height:200px;touch-action:pan-y}
+#brew-chart-svg .grid{stroke:var(--rule);stroke-width:1}
+#brew-chart-svg .axis-label{fill:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+#brew-chart-svg .axis-unit{fill:var(--muted);font-size:12px}
+#brew-chart-svg .stage-mark{stroke:var(--rule);stroke-width:1;stroke-dasharray:3 4}
+#brew-chart-svg .line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+#brew-chart-svg .line.water{stroke:#3b6fd4}
+#brew-chart-svg .line.flow{stroke:#17a06a;stroke-width:1.6}
+#brew-chart-svg .dot-water{fill:#3b6fd4}
+#brew-chart-svg .dot-flow{fill:#17a06a}
+.brew-chart-empty{position:absolute;inset:48px 16px auto;text-align:center;font-size:13px;color:var(--muted)}
+.brew-chart-empty[hidden]{display:none}
+.brew-chart.is-expanded .brew-chart-frame{max-height:min(60vh,420px)}
+.brew-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}
+.brew-stat{background:var(--ledger-surface);border-radius:14px;padding:14px 16px;display:grid;gap:2px}
+.brew-stat span{font-size:var(--type-caption);color:var(--muted)}
+.brew-stat strong{font-size:28px;font-weight:550;line-height:1.15;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.brew-stat strong em{font-size:13px;font-weight:500;color:var(--muted);font-style:normal;margin-left:2px}
+.brew-stat small{font-size:12px;color:var(--muted)}
+@media(max-width:520px){.brew-stat strong{font-size:24px}.brew-scale-panel{padding:16px}}
+.brew-chart .chip[aria-pressed="false"]{text-decoration:none}
+#brew-scale-status{font-size:13px}

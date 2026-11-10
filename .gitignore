@@ -1,2 +1,7 @@
 /node_modules/
 /vendor/ocr/
+
+# 本地验证产物（截图与 CDP 脚本）
+brew-*.png
+verify-brew.mjs
+verify-scale.mjs

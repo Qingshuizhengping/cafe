@@ -10,8 +10,8 @@
 <link rel="icon" type="image/png" href="./assets/app-icon.png">
 <link rel="apple-touch-icon" sizes="180x180" href="./assets/app-icon.png">
 <meta name="description" content="豆档记录咖啡豆的烘焙日期、库存、冲煮和品鉴。">
-<link rel="stylesheet" href="./preview.css?v=10">
-<script type="module" src="./preview.mjs?v=10"></script>
+<link rel="stylesheet" href="./preview.css?v=14">
+<script type="module" src="./preview.mjs?v=14"></script>
 </head>
 <body>
 <a class="skip-link" href="#main-content">跳到主要内容</a>
@@ -117,12 +117,35 @@
 <label>咖啡豆<select id="brew-bean"></select></label>
 <label>冲煮方案<select id="brew-recipe"><option value="three">三段式</option><option value="four-six">4:6 五段式</option><option value="custom">自定义</option></select></label>
 <div class="form-pair"><label>粉量（g）<input id="brew-dose" type="number" min="0.01" step="0.01" value="15" required></label><label>总水量（g）<input id="brew-water" type="number" min="1" step="1" value="225" required></label></div>
+<div class="form-pair"><label>粉水比<select id="brew-ratio"><option value="14">1:14</option><option value="15" selected>1:15</option><option value="16">1:16</option><option value="17">1:17</option><option value="18">1:18</option></select></label><label>预计时长（秒）<input id="brew-duration" type="number" min="30" max="3600" step="5" value="150"></label></div>
+<p class="supporting brew-fit-row"><span id="brew-ratio-readout">粉水比 1:15.0</span><button id="brew-fit" type="button" class="text-action">按粉水比重算水量</button><button id="brew-retime" type="button" class="text-action">按预计时长排段</button></p>
 <div class="form-pair"><label>水温（°C）<input id="brew-temp" type="number" min="0" max="100" value="92"></label><label>研磨度<input id="brew-grind" placeholder="例如 18 格"></label></div>
 <label>器具<input id="brew-equipment" value="V60" placeholder="例如 V60"></label>
-<fieldset class="stage-editor"><legend>分段计划</legend><p class="supporting">每段填写结束秒数与累计注水量。</p><div id="brew-stages"></div><button id="stage-add" type="button" class="text-action">添加一段</button></fieldset>
+<fieldset class="stage-editor"><legend>分段计划</legend><p class="supporting">每段填写结束秒数与累计注水量。<span id="brew-timeline-hint" class="supporting"></span></p><div id="brew-stages"></div><button id="stage-add" type="button" class="text-action">添加一段</button></fieldset>
 <div class="form-pair"><label>保存方案的名称<input id="recipe-name" placeholder="例如 我的日常手冲"></label><button id="recipe-save" type="button" class="secondary">保存方案</button></div>
 </form>
-<section id="brew-timer" class="timer-panel" aria-label="冲煮计时器"><output id="brew-clock" aria-label="已用时间" aria-live="off">00:00</output><p id="brew-stage-status">准备好后开始计时</p><p id="brew-announcement" class="sr-only" role="status"></p><progress id="brew-progress" max="1" value="0" aria-label="冲煮进度"></progress><div class="action-row"><button id="brew-start" class="primary" type="submit" form="brew-form">开始计时</button><button id="brew-reset" type="button">重置计时</button><button id="brew-finish" class="secondary" type="button">完成并记品鉴</button></div></section>
+<section id="brew-timer" class="timer-panel" aria-label="冲煮计时器"><output id="brew-clock" aria-label="已用时间" aria-live="off">00:00</output><p id="brew-stage-status">准备好后开始计时</p><p id="brew-live-metrics" class="brew-metrics">粉水比 1:16.0 · 预计 1.6 g/s</p><p id="brew-announcement" class="sr-only" role="status"></p><progress id="brew-progress" max="1" value="0" aria-label="冲煮进度"></progress><div class="action-row"><button id="brew-start" class="primary" type="submit" form="brew-form">开始计时</button><button id="brew-reset" type="button">重置计时</button><button id="brew-finish" class="secondary" type="button">完成并记品鉴</button></div></section>
+<section id="brew-scale" class="brew-scale-panel" aria-labelledby="brew-scale-title">
+<div class="brew-scale-head"><div><h2 id="brew-scale-title">冲煮数据</h2><p class="supporting">连上 TIMEMORE Basic3 后，重量与流速会实时画出来，分段会跟着实测注水量推进。</p></div><button id="brew-scale-toggle" type="button" class="text-action" aria-expanded="true" aria-controls="brew-scale-body">收起</button></div>
+<div class="brew-scale-links" id="brew-scale-body">
+<div class="action-row"><button id="brew-scale-connect" type="button" class="secondary" disabled>连接电子秤</button><button id="brew-scale-bridge" type="button" disabled>用手机当桥</button><button id="brew-scale-zero" type="button" class="text-action" disabled>清零</button><span id="brew-scale-status" class="supporting" role="status">正在检测蓝牙能力…</span></div>
+<p id="brew-scale-hint" class="supporting"></p>
+</div>
+<div class="brew-chart" id="brew-chart">
+<div class="brew-chart-toolbar"><div class="brew-chart-legend"><button id="brew-legend-water" type="button" class="chip is-water" aria-pressed="true"><i aria-hidden="true"></i>注水量</button><button id="brew-legend-flow" type="button" class="chip is-flow" aria-pressed="true"><i aria-hidden="true"></i>注水流速</button></div><button id="brew-chart-expand" type="button" class="text-action" aria-pressed="false">放大</button></div>
+<div class="brew-chart-frame">
+<svg id="brew-chart-svg" viewBox="0 0 640 320" role="img" aria-label="注水量与注水流速曲线"></svg>
+</div>
+<p id="brew-chart-empty" class="brew-chart-empty">连接电子秤后开始记录曲线，也可以先点「开始计时」。<button id="brew-chart-demo" type="button" class="text-action">看一下示例曲线</button></p>
+</div>
+<div class="brew-stats">
+<div class="brew-stat"><span>时间</span><strong id="brew-stat-time">00:00</strong><small>计时</small></div>
+<div class="brew-stat"><span>粉重</span><strong id="brew-stat-dose">—<em>g</em></strong><small>实际倒粉</small></div>
+<div class="brew-stat"><span>注水量</span><strong id="brew-stat-water">—<em>g</em></strong><small>已注入</small></div>
+<div class="brew-stat"><span>粉水比</span><strong id="brew-stat-ratio">—</strong><small>按实测</small></div>
+</div>
+<p class="supporting">清零后先倒粉：粉重会自己记下来；再开始注水，注水量与粉水比按扣掉粉重后的净注入计算。</p>
+</section>
 <p id="brew-feedback" class="feedback" role="status"></p>
 </section>
 <section id="data-page" hidden aria-labelledby="data-title">
@@ -180,7 +203,7 @@
 <label>总体评分<select id="tasting-rating"><option value="0">暂不评分</option><option value="1">1 分</option><option value="2">2 分</option><option value="3">3 分</option><option value="4">4 分</option><option value="5">5 分</option></select></label>
 <div id="taste-dimensions" class="taste-dimensions"></div>
 <label>品鉴感受<textarea id="tasting-text" rows="3" placeholder="记录香气、风味与这一杯的感受"></textarea></label>
-<details><summary>冲煮参数</summary><div class="form-pair"><label>器具<input id="tasting-equipment"></label><label>水量（g）<input id="tasting-water" type="number" min="0" step="0.01"></label><label>水温（°C）<input id="tasting-temp" type="number" min="0" max="100"></label><label>研磨度<input id="tasting-grind"></label></div></details>
+<details><summary>冲煮参数</summary><div class="form-pair"><label>器具<input id="tasting-equipment"></label><label>水量（g）<input id="tasting-water" type="number" min="0" step="0.01"></label><label>水温（°C）<input id="tasting-temp" type="number" min="0" max="100"></label><label>研磨度<input id="tasting-grind"></label></div><p id="tasting-brew-facts" class="supporting" hidden><span id="tasting-ratio"></span> <span id="tasting-duration"></span></p></details>
 <p id="tasting-error" class="feedback" role="status"></p><div class="dialog-actions"><button id="tasting-cancel" type="button">取消</button><button class="primary" type="submit">保存品鉴</button></div>
 </form></dialog>
 <dialog id="action-confirm" aria-labelledby="action-confirm-title"><h2 id="action-confirm-title"></h2><p id="action-confirm-text"></p><p id="action-confirm-error" role="status"></p><div class="dialog-actions"><button id="action-confirm-cancel" type="button" autofocus>取消</button><button id="action-confirm-ok" class="primary" type="button">确认</button></div></dialog>

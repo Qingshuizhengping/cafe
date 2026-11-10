@@ -1,6 +1,6 @@
 import {scanLabel} from './core/scan.mjs?v=6';
 import {recordStock, flavorState, unitCost, undoStock, readBackup} from './core/journal.mjs?v=8';
-import {createWorkspace} from './workspace.mjs?v=9';
+import {createWorkspace} from './workspace.mjs?v=12';
 import {createAccountStorage} from './account.mjs?v=8';
 import {createCamera, createImporter, componentEditor, recognizeFile} from './importer.mjs?v=5';
 import {normalizeComponents} from './core/recognition.mjs';

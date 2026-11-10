@@ -6,6 +6,7 @@ import {isIP} from 'node:net';
 import Database from 'better-sqlite3';
 import {validateRecords} from './core/journal.mjs';
 import {validateRecipes} from './core/recipes.mjs';
+import {attachScaleRelay} from './scale-bridge-server.mjs';
 
 const scrypt = promisify(derive);
 const cookieName = '__Host-doudang';
@@ -231,6 +232,15 @@ export function createAccountServer({databasePath, origin, trustLoopbackProxy = 
     }
   });
   server.once('close', () => db.close());
+  // 电子秤中继：iOS 上的浏览器没有 Web Bluetooth，靠 /api/scale/relay 把重量转进来。
+  // 握手前用登录态认人，房间按用户隔离；同源代理要让 /api/scale/ 的 Upgrade 头透传到账号服务。
+  attachScaleRelay(server, {
+    authenticate: request => {
+      const token = tokenFor(request);
+      if (!token) return '';
+      return lookup.get(token, Date.now())?.id ?? '';
+    },
+  });
   return server;
 }
 

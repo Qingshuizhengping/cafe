@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#141518">
+<title>豆档 · 秤桥</title>
+<link rel="stylesheet" href="./preview.css?v=14">
+<style>
+.bridge{max-width:520px;margin:0 auto;padding:24px 20px 40px}
+.bridge h1{font-size:1.5rem;margin:0 0 8px}
+.bridge-weight{font-size:64px;font-weight:550;line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:-.03em;margin:20px 0 4px}
+.bridge-flow{font-size:15px;color:var(--muted);font-variant-numeric:tabular-nums;margin:0}
+.bridge ol{padding-left:20px;font-size:14px;color:var(--muted);line-height:1.7}
+.bridge .action-row{margin:20px 0}
+.bridge .callout{border:1px solid var(--rule);border-radius:14px;padding:12px 14px;font-size:14px;margin:20px 0;background:var(--ledger-surface)}
+.bridge .callout[hidden]{display:none}
+</style>
+</head>
+<body>
+<main class="bridge">
+<h1>秤桥</h1>
+<p class="supporting">把能连蓝牙的这台设备当成电子秤的转发器：这里连上 TIMEMORE 秤，重量会同步到同一账号下的「豆档 → 冲煮」。关掉这个页面就会断开。</p>
+<ol>
+<li>确认这台设备和要看的设备都登录了同一个豆档账号。</li>
+<li>下面点「连接电子秤」，选 TIMEMORE Basic3（或名字以 TES 开头的秤）。</li>
+<li>在另一台设备的冲煮页点「用手机当桥」，就能看到实时重量，不用输任何码。</li>
+</ol>
+<div class="callout" id="bridge-warning" hidden></div>
+<div class="action-row"><button id="bridge-connect" type="button" class="primary">连接电子秤</button><button id="bridge-stop" type="button" disabled>断开</button></div>
+<p class="bridge-weight" id="bridge-weight">—<small style="font-size:20px"> g</small></p>
+<p class="bridge-flow" id="bridge-flow">流速 — g/s</p>
+<p class="feedback" id="bridge-status" role="status"></p>
+</main>
+<script type="module">
+import {webBluetoothAvailable} from './core/scale-ble.mjs?v=2';
+import {startBridge, bridgeAvailable} from './core/scale-bridge.mjs?v=3';
+import {formatGrams} from './core/scale.mjs?v=2';
+
+const $ = id => document.getElementById(id);
+
+if (!bridgeAvailable()) {
+  $('bridge-warning').hidden = false;
+  $('bridge-warning').textContent = '这个页面必须用 HTTPS（或 localhost）打开才能调用蓝牙。请从自己的站点进入 bridge.html。';
+  $('bridge-connect').disabled = true;
+} else if (!webBluetoothAvailable()) {
+  $('bridge-warning').hidden = false;
+  $('bridge-warning').textContent = '这台设备的浏览器没有 Web Bluetooth。iOS 上请用安卓手机或桌面 Chrome 当桥；这台设备直接去冲煮页看数据就行。';
+  $('bridge-connect').disabled = true;
+}
+
+let bridge;
+$('bridge-connect').onclick = async () => {
+  $('bridge-connect').disabled = true;
+  try {
+    bridge = await startBridge({
+      onReading: reading => {
+        $('bridge-weight').innerHTML = formatGrams(reading.grams) + '<small style="font-size:20px"> g</small>';
+        $('bridge-flow').textContent = '流速 ' + formatGrams(reading.flow) + ' g/s';
+      },
+      onStatus: event => {
+        if (event.kind === 'relay-up') $('bridge-status').textContent = '中继已连上，另一台设备点「用手机当桥」就能看到重量。';
+        else if (event.kind === 'relay-down') $('bridge-status').textContent = '中继断开，正在重连…';
+        else if (event.kind === 'connected') $('bridge-status').textContent = '已连接 ' + (event.name || '电子秤') + '，正在同步。';
+        else if (event.kind === 'bridge-ready') $('bridge-status').textContent = '中继已连上，另一台设备点「用手机当桥」就能看到重量。';
+      },
+    });
+    $('bridge-stop').disabled = false;
+    $('bridge-status').textContent = '已连接秤，正在同步到账号。';
+  } catch (error) {
+    $('bridge-connect').disabled = false;
+    $('bridge-status').textContent = error.name === 'NotFoundError' ? '没有选择设备。'
+      : error.name === 'NotAllowedError' ? '浏览器拒绝了蓝牙权限，请确认站点是 HTTPS 并重新授权。'
+      : error.message;
+  }
+};
+
+$('bridge-stop').onclick = async () => {
+  await bridge?.stop?.();
+  bridge = undefined;
+  $('bridge-stop').disabled = true;
+  $('bridge-connect').disabled = false;
+  $('bridge-status').textContent = '已断开。';
+};
+</script>
+</body>
+</html>
