@@ -576,7 +576,11 @@ function renderLibrary(announceResults = false) {
     identity.append(button);
     if (context.length) {
       const detail = document.createElement('small');
-      detail.textContent = context.join(' · ');
+      for (const label of context) {
+        const item = document.createElement('span');
+        item.textContent = label;
+        detail.append(item);
+      }
       identity.append(detail);
     }
     const deduct = document.createElement('button');
