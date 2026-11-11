@@ -565,3 +565,11 @@ dialog .dialog-actions{position:sticky;bottom:-22px;background:var(--surface);pa
 .bean-origin{flex:0 1 auto;max-width:40%;color:var(--muted);font-size:var(--type-caption);overflow-wrap:anywhere;min-width:0}
 .bean-metrics{font-size:12px}
 .bean-metrics>span{padding-inline:4px}
+
+/* Align the cover, reading rows and footer on one shared card grid. */
+.bean-card{grid-template-rows:minmax(24px,auto) minmax(28px,auto) minmax(44px,1fr);align-content:stretch;row-gap:8px}
+.bean-cover{margin-block-start:0}
+.bean-title-line{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,auto);min-height:24px}
+.bean-title-line .bean-origin{max-width:7em;text-align:end}
+.bean-metrics{grid-template-columns:repeat(3,minmax(0,1fr));min-height:28px;padding-block:2px;line-height:1.5}
+.bean-phase,.bean-controls{align-self:center}
