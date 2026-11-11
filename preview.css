@@ -557,3 +557,11 @@ dialog .dialog-actions{position:sticky;bottom:-22px;background:var(--surface);pa
   .import-label-full{display:none}
   .import-label-compact{display:inline}
 }
+
+/* Keep identity and measurements beside the cover, above the actions. */
+.bean-card{grid-template:"cover name name" auto "cover metrics metrics" auto "phase phase controls" auto / 56px minmax(0,1fr) auto;min-height:144px;align-content:start;row-gap:6px}
+.bean-title-line{display:flex;align-items:baseline;gap:8px;min-width:0}
+.bean-title-line .record{display:inline;flex:0 1 auto;min-width:0;padding:0;font-size:clamp(1rem,4.6vw,1.125rem)}
+.bean-origin{flex:0 1 auto;max-width:40%;color:var(--muted);font-size:var(--type-caption);overflow-wrap:anywhere;min-width:0}
+.bean-metrics{font-size:12px}
+.bean-metrics>span{padding-inline:4px}

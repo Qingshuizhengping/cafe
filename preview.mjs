@@ -577,10 +577,19 @@ function renderLibrary(announceResults = false) {
       ? beanFieldAction(record, 'roastDate', values.roastDate ? '核对烘焙日期' : '补填烘焙日期')
       : '养豆 ' + age + ' 天';
     metrics.append(beanMetric('', ageValue), beanMetric('剩余及总重量 ', stock), beanMetric('单克价 ', price));
-    const context = [record.pinnedAt ? '已置顶' : '', values.origin, remaining === 0 ? '已用完' : '', readDraft(record.id) ? '有草稿' : ''].filter(Boolean);
+    const context = [record.pinnedAt ? '已置顶' : '', remaining === 0 ? '已用完' : '', readDraft(record.id) ? '有草稿' : ''].filter(Boolean);
     const identity = document.createElement('div');
     identity.className = 'bean-identity';
-    identity.append(button);
+    const titleLine = document.createElement('div');
+    titleLine.className = 'bean-title-line';
+    titleLine.append(button);
+    identity.append(titleLine);
+    if (values.origin?.trim()) {
+      const origin = document.createElement('span');
+      origin.className = 'bean-origin';
+      origin.textContent = values.origin.trim();
+      titleLine.append(origin);
+    }
     if (context.length) {
       const detail = document.createElement('small');
       for (const label of context) {
