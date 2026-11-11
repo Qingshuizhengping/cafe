@@ -588,3 +588,35 @@ dialog .dialog-actions{position:sticky;bottom:-22px;background:var(--surface);pa
   .bean-title-line .record{font-size:15px}
   .bean-title-line .bean-origin{font-size:12px}
 }
+
+/* Center the visible ink independently of font line-box whitespace. */
+.bean-metrics>span{display:flex;align-items:center;justify-content:center;min-height:18px}
+.bean-metrics>span:first-child{justify-content:flex-start}
+.bean-metrics>span:last-child{justify-content:flex-end}
+.bean-metric-value{display:block;max-width:100%;min-width:0;line-height:1.35}
+.deduct-button{display:grid;place-items:center;padding-block:0;line-height:1}
+.deduct-label{display:block;line-height:1}
+.bean-metric-value,.deduct-label{transform:translateY(var(--ink-shift,0px))}
+@supports(corner-shape:squircle){
+  .bean-metrics,.deduct-button{corner-shape:squircle}
+}
+@supports(clip-path:shape(from 0 0,line to 100% 0,close)) and (not (corner-shape:squircle)){
+  .bean-metrics{--smooth-radius:12px}
+  .deduct-button{--smooth-radius:22px}
+  .bean-metrics,.deduct-button{
+    border-radius:0;
+    clip-path:shape(from var(--smooth-radius) 0,
+      line to calc(100% - var(--smooth-radius)) 0,
+      curve to calc(100% - var(--smooth-radius) * .214286) calc(var(--smooth-radius) * .214286) with calc(100% - var(--smooth-radius) * .571429) 0 / calc(100% - var(--smooth-radius) * .428571) 0,
+      curve to 100% var(--smooth-radius) with 100% calc(var(--smooth-radius) * .428571) / 100% calc(var(--smooth-radius) * .571429),
+      line to 100% calc(100% - var(--smooth-radius)),
+      curve to calc(100% - var(--smooth-radius) * .214286) calc(100% - var(--smooth-radius) * .214286) with 100% calc(100% - var(--smooth-radius) * .571429) / 100% calc(100% - var(--smooth-radius) * .428571),
+      curve to calc(100% - var(--smooth-radius)) 100% with calc(100% - var(--smooth-radius) * .428571) 100% / calc(100% - var(--smooth-radius) * .571429) 100%,
+      line to var(--smooth-radius) 100%,
+      curve to calc(var(--smooth-radius) * .214286) calc(100% - var(--smooth-radius) * .214286) with calc(var(--smooth-radius) * .571429) 100% / calc(var(--smooth-radius) * .428571) 100%,
+      curve to 0 calc(100% - var(--smooth-radius)) with 0 calc(100% - var(--smooth-radius) * .428571) / 0 calc(100% - var(--smooth-radius) * .571429),
+      line to 0 var(--smooth-radius),
+      curve to calc(var(--smooth-radius) * .214286) calc(var(--smooth-radius) * .214286) with 0 calc(var(--smooth-radius) * .571429) / 0 calc(var(--smooth-radius) * .428571),
+      curve to var(--smooth-radius) 0 with calc(var(--smooth-radius) * .428571) 0 / calc(var(--smooth-radius) * .571429) 0,close);
+  }
+}

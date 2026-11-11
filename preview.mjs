@@ -301,9 +301,50 @@ function beanMetric(label, value) {
     description.textContent = label;
     metric.append(description);
   }
-  metric.append(value);
+  const content = document.createElement('span');
+  content.className = 'bean-metric-value';
+  content.append(value);
+  metric.append(content);
   return metric;
 }
+
+// Center the visible glyphs instead of the font's ascent/descent whitespace.
+function centerInventoryLabels() {
+  const labels = [...$('entries').querySelectorAll('.bean-metric-value,.deduct-label')];
+  for (const label of labels) label.style.removeProperty('--ink-shift');
+  const context = document.createElement('canvas').getContext('2d');
+  if (!context) return;
+  const shifts = labels.map(label => {
+    const walker = document.createTreeWalker(label, NodeFilter.SHOW_TEXT);
+    const range = document.createRange();
+    let top = Infinity;
+    let bottom = -Infinity;
+    for (let node; (node = walker.nextNode());) {
+      if (!node.textContent.trim()) continue;
+      range.selectNodeContents(node);
+      const rects = [...range.getClientRects()].filter(rect => rect.height && rect.width);
+      if (!rects.length) continue;
+      const style = getComputedStyle(node.parentElement);
+      context.font = [style.fontStyle, style.fontWeight, style.fontSize, style.fontFamily].join(' ');
+      const ink = context.measureText(node.textContent);
+      if (!Number.isFinite(ink.fontBoundingBoxAscent)) continue;
+      top = Math.min(top, rects[0].top + ink.fontBoundingBoxAscent - ink.actualBoundingBoxAscent);
+      bottom = Math.max(bottom, rects.at(-1).top + ink.fontBoundingBoxAscent + ink.actualBoundingBoxDescent);
+    }
+    const box = label.parentElement.getBoundingClientRect();
+    const offset = box.top + box.height / 2 - (top + bottom) / 2;
+    return Number.isFinite(offset) ? Math.max(-3, Math.min(3, Math.round(offset * 2) / 2)) : 0;
+  });
+  labels.forEach((label, index) => label.style.setProperty('--ink-shift', shifts[index] + 'px'));
+}
+
+let labelAlignmentFrame;
+function scheduleLabelAlignment() {
+  cancelAnimationFrame(labelAlignmentFrame);
+  labelAlignmentFrame = requestAnimationFrame(centerInventoryLabels);
+}
+new ResizeObserver(scheduleLabelAlignment).observe($('entries'));
+document.fonts.ready.then(scheduleLabelAlignment);
 
 function beanFieldAction(record, field, text) {
   const button = document.createElement('button');
@@ -613,6 +654,10 @@ function renderLibrary(announceResults = false) {
     deduct.className = 'deduct-button';
     deduct.type = 'button';
     deduct.textContent = '减豆';
+    const deductLabel = document.createElement('span');
+    deductLabel.className = 'deduct-label';
+    deductLabel.textContent = deduct.textContent;
+    deduct.replaceChildren(deductLabel);
     deduct.setAttribute('aria-label', '减豆：' + record.values.name);
     deduct.disabled = !(Number(record.values.remaining) > 0);
     deduct.onclick = () => {
@@ -638,6 +683,7 @@ function renderLibrary(announceResults = false) {
     row.append(controls);
     $('entries').append(beanActionRow(row, controls, record, index));
   }
+  scheduleLabelAlignment();
   workspace?.refresh();
 }
 
