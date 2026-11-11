@@ -5,6 +5,9 @@
 /* Hallmark · waive 72 · optional field groups have nested fieldsets in the editor · the nested editor groups are outside the inventory redesign and retain their layout */
 :root{
   color-scheme:light;
+  --plot-water:#3b6fd4;
+  --plot-flow:#607184;
+  --plot-label:#f5f7fa;
   --capture-focus:#9bc3ff;
   --capture-bg:#242424;
   --capture-ink:#f5f5f5;
@@ -515,10 +518,10 @@ dialog .dialog-actions{position:sticky;bottom:-22px;background:var(--surface);pa
 .brew-chart{position:relative;margin-top:16px;border:1px solid var(--rule);border-radius:16px;padding:12px 12px 4px}
 .brew-chart-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
 .brew-chart-legend{display:flex;gap:8px;flex-wrap:wrap}
-.brew-chart .chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:5px 14px;border-radius:999px;border:1px solid transparent;color:#fff;min-height:32px}
+.brew-chart .chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:5px 14px;border-radius:999px;border:1px solid transparent;color:var(--plot-label);min-height:32px}
 .brew-chart .chip i{width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.85}
-.brew-chart .chip.is-water{background:#3b6fd4}
-.brew-chart .chip.is-flow{background:#17a06a}
+.brew-chart .chip.is-water{background:var(--plot-water)}
+.brew-chart .chip.is-flow{background:var(--plot-flow)}
 .brew-chart .chip.is-off{background:var(--rule);color:var(--muted)}
 .brew-chart .chip[aria-pressed="false"]{text-decoration:line-through}
 .brew-chart-frame{position:relative;display:block}
@@ -528,10 +531,10 @@ dialog .dialog-actions{position:sticky;bottom:-22px;background:var(--surface);pa
 #brew-chart-svg .axis-unit{fill:var(--muted);font-size:12px}
 #brew-chart-svg .stage-mark{stroke:var(--rule);stroke-width:1;stroke-dasharray:3 4}
 #brew-chart-svg .line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
-#brew-chart-svg .line.water{stroke:#3b6fd4}
-#brew-chart-svg .line.flow{stroke:#17a06a;stroke-width:1.6}
-#brew-chart-svg .dot-water{fill:#3b6fd4}
-#brew-chart-svg .dot-flow{fill:#17a06a}
+#brew-chart-svg .line.water{stroke:var(--plot-water)}
+#brew-chart-svg .line.flow{stroke:var(--plot-flow);stroke-width:1.6;stroke-dasharray:5 3}
+#brew-chart-svg .dot-water{fill:var(--plot-water)}
+#brew-chart-svg .dot-flow{fill:var(--plot-flow)}
 .brew-chart-empty{position:absolute;inset:48px 16px auto;text-align:center;font-size:13px;color:var(--muted)}
 .brew-chart-empty[hidden]{display:none}
 .brew-chart.is-expanded .brew-chart-frame{max-height:min(60vh,420px)}
@@ -654,3 +657,153 @@ dialog .dialog-actions{position:sticky;bottom:-22px;background:var(--surface);pa
 }
 #theme-toggle{display:grid;place-items:center;flex:0 0 44px;width:44px;height:44px;padding:0;color:var(--muted);background:var(--selection)}
 #theme-toggle svg{width:20px;height:20px}
+
+/* AI七嫂 reference: raised controls, recessed inputs and softly lit surfaces. */
+:root{
+  --material-card-top:#ffffffb8;
+  --material-card-bottom:#f4f6f8cc;
+  --material-button-top:#ffffffcc;
+  --material-button-bottom:#f4f6f8a8;
+  --material-button-edge:#8f9cad70;
+  --material-light:#ffffffb8;
+  --material-shade:#24334b0a;
+  --material-hair:#293b560e;
+  --material-shadow:#2638520c;
+  --material-primary-top:#ffffffcc;
+  --material-primary-bottom:#f4f6f8a8;
+  --material-primary-ink:var(--ink);
+  --material-primary-edge:#8f9cad80;
+  --material-control-top:#edf0f480;
+  --material-control-bottom:#f9fafb99;
+  --material-card:linear-gradient(155deg,var(--material-card-top),var(--material-card-bottom));
+  --material-button:linear-gradient(180deg,var(--material-button-top),var(--material-button-bottom));
+  --material-primary:linear-gradient(180deg,var(--material-primary-top),var(--material-primary-bottom));
+  --material-control:linear-gradient(180deg,var(--material-control-top),var(--material-control-bottom));
+  --material-button-shadow:0 1px 2px var(--material-shade),0 4px 10px -6px var(--material-shadow),inset 0 1px 0 var(--material-light);
+  --material-pressed-shadow:inset 0 1px 3px var(--material-shade),inset 0 -1px 0 var(--material-light);
+}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --material-card-top:#2b2f38a6;
+    --material-card-bottom:#23262eb3;
+    --material-button-top:#40465070;
+    --material-button-bottom:#2a2e3680;
+    --material-button-edge:#c4cdda30;
+    --material-light:#ffffff1a;
+    --material-shade:#0000001f;
+    --material-hair:#ffffff0f;
+    --material-shadow:#00000030;
+    --material-primary-top:#40465070;
+    --material-primary-bottom:#2a2e3680;
+    --material-primary-ink:var(--ink);
+    --material-primary-edge:#c4cdda40;
+    --material-control-top:#11141a80;
+    --material-control-bottom:#1f232b99;
+  }
+}
+:root[data-theme="dark"]{
+  --material-card-top:#2b2f38a6;
+  --material-card-bottom:#23262eb3;
+  --material-button-top:#40465070;
+  --material-button-bottom:#2a2e3680;
+  --material-button-edge:#c4cdda30;
+  --material-light:#ffffff1a;
+  --material-shade:#0000001f;
+  --material-hair:#ffffff0f;
+  --material-shadow:#00000030;
+  --material-primary-top:#40465070;
+  --material-primary-bottom:#2a2e3680;
+  --material-primary-ink:var(--ink);
+  --material-primary-edge:#c4cdda40;
+  --material-control-top:#11141a80;
+  --material-control-bottom:#1f232b99;
+}
+.bean-card{background:var(--material-card);box-shadow:inset 0 1px 0 var(--material-light),inset 0 -1px 0 var(--material-shade),inset 0 0 0 1px var(--material-hair)}
+.bean-row:not(.is-open,.is-dragging){filter:drop-shadow(0 2px 3px var(--material-shade)) drop-shadow(0 10px 14px var(--material-shadow))}
+.bean-metrics{--smooth-radius:14px;border-radius:999px;background:var(--tile-foot);box-shadow:inset 0 1px 2px var(--material-shade),inset 0 -1px 0 var(--material-light)}
+:is(.primary,.secondary,.deduct-button),#theme-toggle,.bean-action-buttons button{box-shadow:var(--material-button-shadow)}
+.secondary,#theme-toggle,.bean-action-buttons button:not(.danger-button){border:1px solid var(--material-button-edge);background:var(--material-button);color:var(--ink)}
+.primary,.deduct-button,.bean-action-buttons .bean-undo{border:1px solid var(--material-primary-edge);background:var(--material-primary);color:var(--material-primary-ink)}
+.deduct-button{--smooth-radius:22px;min-width:64px;padding-inline:16px;border-radius:999px}
+:is(.primary,.secondary,.deduct-button):disabled{background:var(--selection);color:var(--muted);border-color:var(--rule);box-shadow:none}
+.library-tools :is(input,select),.library-filters select{background:var(--material-control);box-shadow:var(--material-pressed-shadow);border-color:var(--control-edge)}
+@supports(corner-shape:squircle){
+  .primary,.secondary,#theme-toggle,.bean-metrics,.deduct-button{corner-shape:squircle}
+  .bean-metrics,.deduct-button{corner-shape:superellipse(1.25)}
+}
+@supports(clip-path:shape(from 0 0,line to 100% 0,close)) and (not (corner-shape:squircle)){
+  .bean-metrics,.deduct-button{border-radius:0}
+}
+@media(hover:hover){
+  :is(.primary,.deduct-button):not(:disabled):hover,.bean-action-buttons .bean-undo:not(:disabled):hover{background:var(--material-primary);box-shadow:var(--material-button-shadow),inset 0 0 0 1px var(--material-primary-edge)}
+  .secondary:not(:disabled):hover,#theme-toggle:hover,.bean-action-buttons button:not(.danger-button,.bean-undo):not(:disabled):hover{background:var(--material-button);box-shadow:var(--material-button-shadow),inset 0 0 0 1px var(--material-button-edge)}
+}
+:is(.primary,.secondary,.deduct-button):not(:disabled):active,#theme-toggle:active,.bean-action-buttons button:not(:disabled):active{box-shadow:var(--material-pressed-shadow)}
+@media(prefers-reduced-motion:no-preference){
+  :is(.primary,.secondary,.deduct-button),#theme-toggle,.bean-action-buttons button{transition:transform 140ms ease-out}
+  :is(.primary,.secondary,.deduct-button):not(:disabled):active,#theme-toggle:active,.bean-action-buttons button:not(:disabled):active{transform:translateY(1px)}
+}
+@media(prefers-reduced-motion:reduce){
+  :is(.primary,.secondary,.deduct-button),#theme-toggle,.bean-action-buttons button{transition:none}
+}
+@media(prefers-reduced-transparency:reduce){.bean-card{background:var(--surface)}}
+@media(forced-colors:active){
+  .bean-card,.bean-metrics{box-shadow:none}
+  :is(.primary,.secondary,.deduct-button),#theme-toggle,.bean-action-buttons button{box-shadow:none;border:1px solid ButtonText}
+}
+.library-tools select,.library-filters select{
+  -webkit-appearance:none;appearance:none;padding-inline-end:32px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%),var(--material-control);
+  background-position:right 14px center,right 9px center,center;
+  background-size:5px 5px,5px 5px,auto;
+  background-repeat:no-repeat;
+}
+
+/* The optical layer is limited to controls, above the quiet content layer. */
+:root{--glass-control-wash:#ffffff14;--glass-focus-rim:#ffffff99}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--glass-control-wash:#ffffff04;--glass-focus-rim:#ffffff30}}
+:root[data-theme="dark"]{--glass-control-wash:#ffffff04;--glass-focus-rim:#ffffff30}
+.qisao-optical-canvas{position:fixed;inset:0;width:0;height:0;opacity:0;pointer-events:none}
+.qisao-optical-backdrop{display:none!important}
+.qisao-optical-surface{display:none}
+html[data-liquid-glass="webgl"] .qisao-optical-surface{display:block;position:absolute;inset:0;width:100%;height:100%;border-radius:inherit;z-index:-1;pointer-events:none}
+html[data-liquid-glass="webgl"] .qg-surface{isolation:isolate;background:var(--glass-control-wash);box-shadow:0 1px 3px var(--material-shade),inset 0 1px 0 var(--glass-focus-rim)}
+html[data-liquid-glass="webgl"] .qg-positioned{position:relative}
+html[data-liquid-glass="webgl"] .app-nav::before{background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none}
+html[data-liquid-glass="webgl"] :is(.primary,.secondary,.deduct-button):not(:disabled):hover{background:var(--glass-control-wash)}
+html[data-liquid-glass="webgl"] .qg-surface:disabled{background:var(--selection);box-shadow:none}
+html[data-liquid-glass="fallback"] .qisao-optical-surface{display:none}
+
+/* Audit corrections: clear focus, stable compact values and quieter hierarchy. */
+:root{--glass-primary-wash:#8b98a522}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--glass-primary-wash:#a4afbf14}}
+:root[data-theme="dark"]{--glass-primary-wash:#a4afbf14}
+.bean-action-buttons button:first-child:focus-visible{outline-color:var(--focus)}
+.bean-stock-value{display:inline-flex;align-items:baseline;flex-wrap:wrap;justify-content:center}
+.bean-remaining,.bean-stock-total{white-space:nowrap}
+.metric-compact{display:none}
+.library-entry-actions #new-entry{background:var(--glass-primary-wash);border-color:var(--control-edge);color:var(--ink)}
+.library-entry-actions #batch-open{border-color:var(--material-hair);color:var(--muted);box-shadow:none}
+html[data-liquid-glass="webgl"] .qg-surface{box-shadow:0 1px 2px var(--material-shade)}
+html[data-liquid-glass="webgl"] #batch-open .qisao-optical-surface{opacity:.45}
+.brew-stat span{font-variant-numeric:tabular-nums}
+@media(max-width:360px){
+  .metric-full{display:none}
+  .metric-compact{display:inline;white-space:nowrap}
+  .bean-metrics>span:nth-child(2){padding-inline:3px}
+}
+
+/* Quiet resting surfaces; visible outlines are reserved for keyboard focus. */
+:is(.primary,.secondary,.deduct-button),#theme-toggle,.bean-action-buttons button{border-color:transparent}
+.library-entry-actions #new-entry,.library-entry-actions #batch-open{border-color:transparent}
+.library-tools :is(input,select),.library-filters select{border-color:transparent}
+.bean-card{box-shadow:none}
+.app-nav::before{border-color:transparent}
+html[data-liquid-glass="webgl"] #new-entry .qisao-optical-surface{opacity:.72}
+html[data-liquid-glass="webgl"] .deduct-button{background:var(--glass-primary-wash);box-shadow:0 2px 5px var(--material-shade)}
+html[data-liquid-glass="webgl"] .deduct-button .qisao-optical-surface{opacity:.72}
+@media(forced-colors:active){
+  :is(.primary,.secondary,.deduct-button),#theme-toggle,.bean-action-buttons button{border-color:ButtonText}
+  .library-entry-actions #new-entry,.library-entry-actions #batch-open{border-color:ButtonText}
+  .library-tools :is(input,select),.library-filters select{border-color:FieldText}
+}

@@ -4,6 +4,7 @@ import {createWorkspace} from './workspace.mjs?v=12';
 import {createAccountStorage} from './account.mjs?v=8';
 import {createCamera, createImporter, componentEditor, recognizeFile} from './importer.mjs?v=5';
 import {normalizeComponents} from './core/recognition.mjs';
+import {installLiquidGlass} from './core/liquid-glass.mjs?v=1';
 
 const $ = id => document.getElementById(id);
 const form = $('entry');
@@ -310,6 +311,10 @@ function beanMetric(label, value) {
 
 // Center the visible glyphs instead of the font's ascent/descent whitespace.
 function centerInventoryLabels() {
+  for (const capsule of $('entries').querySelectorAll('.bean-metrics,.deduct-button')) {
+    const {width, height} = capsule.getBoundingClientRect();
+    if (width && height) capsule.style.setProperty('--smooth-radius', Math.min(width, height) / 2 + 'px');
+  }
   const labels = [...$('entries').querySelectorAll('.bean-metric-value,.deduct-label')];
   for (const label of labels) label.style.removeProperty('--ink-shift');
   const context = document.createElement('canvas').getContext('2d');
@@ -343,7 +348,14 @@ function scheduleLabelAlignment() {
   cancelAnimationFrame(labelAlignmentFrame);
   labelAlignmentFrame = requestAnimationFrame(centerInventoryLabels);
 }
-new ResizeObserver(scheduleLabelAlignment).observe($('entries'));
+const inventorySizeObserver = new ResizeObserver(scheduleLabelAlignment);
+function observeInventoryLabels() {
+  inventorySizeObserver.disconnect();
+  inventorySizeObserver.observe($('entries'));
+  for (const capsule of $('entries').querySelectorAll('.bean-metrics,.deduct-button')) inventorySizeObserver.observe(capsule);
+  scheduleLabelAlignment();
+}
+window.addEventListener('resize', scheduleLabelAlignment, {passive: true});
 document.fonts.ready.then(scheduleLabelAlignment);
 
 function beanFieldAction(record, field, text) {
@@ -351,6 +363,15 @@ function beanFieldAction(record, field, text) {
   button.type = 'button';
   button.className = 'bean-field-action';
   button.textContent = text;
+  if (field === 'roastDate') {
+    const full = document.createElement('span');
+    full.className = 'metric-full';
+    full.textContent = text;
+    const compact = document.createElement('span');
+    compact.className = 'metric-compact';
+    compact.textContent = text.startsWith('补填') ? '补日期' : '核日期';
+    button.replaceChildren(full, compact);
+  }
   button.setAttribute('aria-label', text + ' · ' + record.values.name);
   button.onclick = () => {
     openRecord(record);
@@ -617,12 +638,31 @@ function renderLibrary(announceResults = false) {
     const stockAmount = document.createElement('strong');
     stockAmount.className = 'bean-remaining';
     stockAmount.textContent = formatGrams.format(remaining);
-    stock.append(stockAmount, '/' + formatGrams.format(weight) + ' 克');
+    stock.className = 'bean-stock-value';
+    const total = document.createElement('span');
+    total.className = 'bean-stock-total';
+    const fullUnit = document.createElement('span');
+    fullUnit.className = 'metric-full';
+    fullUnit.textContent = ' 克';
+    const compactUnit = document.createElement('span');
+    compactUnit.className = 'metric-compact';
+    compactUnit.textContent = 'g';
+    total.append('/' + formatGrams.format(weight), fullUnit, compactUnit);
+    stock.append(stockAmount, total);
     const metrics = document.createElement('div');
     metrics.className = 'bean-metrics';
-    const price = values.price != null && values.price !== '' && weight > 0
-      ? (Number(values.price) / weight).toFixed(2) + ' 元/克'
-      : beanFieldAction(record, 'price', '补填价格');
+    let price = beanFieldAction(record, 'price', '补填价格');
+    if (values.price != null && values.price !== '' && weight > 0) {
+      const perGram = (Number(values.price) / weight).toFixed(2);
+      price = document.createElement('span');
+      const full = document.createElement('span');
+      full.className = 'metric-full';
+      full.textContent = perGram + ' 元/克';
+      const compact = document.createElement('span');
+      compact.className = 'metric-compact';
+      compact.textContent = '¥' + perGram + '/g';
+      price.append(full, compact);
+    }
     const age = beanAge(values.roastDate, now);
     const ageValue = age === null
       ? beanFieldAction(record, 'roastDate', values.roastDate ? '核对烘焙日期' : '补填烘焙日期')
@@ -683,7 +723,7 @@ function renderLibrary(announceResults = false) {
     row.append(controls);
     $('entries').append(beanActionRow(row, controls, record, index));
   }
-  scheduleLabelAlignment();
+  observeInventoryLabels();
   workspace?.refresh();
 }
 
@@ -1166,4 +1206,5 @@ $('account-open').disabled = false;
 renderLibrary();
 if (records.length || (account.user && !readDraft(null))) showLibrary(true, false);
 else if (readDraft(null)) openRecord();
+installLiquidGlass();
 
