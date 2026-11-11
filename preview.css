@@ -544,3 +544,16 @@ dialog .dialog-actions{position:sticky;bottom:-22px;background:var(--surface);pa
 @media(max-width:520px){.brew-stat strong{font-size:24px}.brew-scale-panel{padding:16px}}
 .brew-chart .chip[aria-pressed="false"]{text-decoration:none}
 #brew-scale-status{font-size:13px}
+
+/* Inventory heading actions and per-bean deduction recovery. */
+.import-label-compact{display:none}
+.bean-action-buttons{flex-wrap:wrap}
+.bean-action-buttons .bean-undo{flex-basis:100%}
+@media(max-width:560px){
+  .library-heading{display:flex;flex-wrap:nowrap;align-items:center;gap:8px}
+  .library-heading h1{flex:0 0 auto;font-size:clamp(1.375rem,6.5vw,1.75rem)}
+  .library-heading>.library-entry-actions{flex:0 0 auto;flex-wrap:nowrap;gap:6px}
+  .library-entry-actions .primary,.library-entry-actions .secondary{min-height:44px;padding:8px;font-size:14px;white-space:nowrap}
+  .import-label-full{display:none}
+  .import-label-compact{display:inline}
+}

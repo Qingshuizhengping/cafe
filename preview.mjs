@@ -336,6 +336,7 @@ document.addEventListener('keydown', event => {
 function beanActionRow(card, controls, record, index) {
   const wrapper = document.createElement('div');
   wrapper.className = 'bean-row';
+  wrapper.dataset.beanId = record.id;
   const actions = document.createElement('div');
   actions.className = 'bean-actions';
   actions.id = 'bean-actions-' + index;
@@ -366,6 +367,15 @@ function beanActionRow(card, controls, record, index) {
   remove.setAttribute('aria-label', '删除 · ' + record.values.name);
   const actionButtons = document.createElement('div');
   actionButtons.className = 'bean-action-buttons';
+  const undo = record.undoDeduction ? document.createElement('button') : null;
+  if (undo) {
+    undo.type = 'button';
+    undo.className = 'bean-undo';
+    undo.textContent = '撤销减豆';
+    undo.setAttribute('aria-label', '撤销减豆 · ' + record.values.name);
+    undo.onclick = () => undoDeduction(record.id, undo);
+    actionButtons.append(undo);
+  }
   actionButtons.append(pin, remove);
   actions.append(actionHeader, actionButtons);
   controls.append(more);
@@ -388,7 +398,7 @@ function beanActionRow(card, controls, record, index) {
   setOpen(false);
   more.onclick = () => {
     setOpen(true);
-    pin.focus({preventScroll: true});
+    (undo ?? pin).focus({preventScroll: true});
   };
   pin.onclick = async () => {
     pin.disabled = true;
@@ -444,7 +454,7 @@ function beanActionRow(card, controls, record, index) {
       const focusWasInCard = card.contains(document.activeElement);
       if (open) {
         setOpen(true);
-        if (focusWasInCard) pin.focus({preventScroll: true});
+        if (focusWasInCard) (undo ?? pin).focus({preventScroll: true});
       } else close();
       wrapper.classList.remove('is-dragging');
       card.style.removeProperty('--drag-offset');
@@ -484,9 +494,6 @@ $('confirm-delete-bean').onclick = async () => {
 
 function renderLibrary(announceResults = false) {
   closeBeanActions = undefined;
-  const undo = records.find(record => record.undoDeduction);
-  $('undo-deduct').hidden = !undo;
-  if (undo) $('undo-deduct').textContent = '撤销减豆 · ' + undo.values.name;
   $('count').textContent = String(records.length);
   const stockTotal = records.reduce((total, {values}) => {
     const remaining = hundredths(values.remaining);
@@ -661,7 +668,7 @@ $('deduct-form').addEventListener('submit', async event => {
     });
     $('deduct').close();
     renderLibrary();
-    $('undo-deduct').focus();
+    focusBeanActions(id);
     $('library-status').textContent = updated.values.name + '已减豆 ' + grams + '\u00a0g，剩余 ' + updated.values.remaining + '\u00a0g。';
   } catch (error) {
     $('deduct-error').textContent = error instanceof DOMException ? '扣减保存失败，请重试。' : error.message;
@@ -670,10 +677,15 @@ $('deduct-form').addEventListener('submit', async event => {
   }
 });
 
-$('undo-deduct').onclick = async () => {
-  const button = $('undo-deduct');
-  const target = records.find(record => record.undoDeduction);
-  if (!target || button.disabled) return;
+function focusBeanActions(id) {
+  const row = [...$('entries').querySelectorAll('.bean-row')].find(row => row.dataset.beanId === String(id));
+  const more = row?.querySelector('.bean-more');
+  (more ?? $('library-title')).focus({preventScroll: true});
+}
+
+async function undoDeduction(recordId, button) {
+  const target = records.find(record => record.id === recordId);
+  if (!target?.undoDeduction || button.disabled) return;
   button.disabled = true;
   const {id, undoDeduction: {token, previous, remaining, previousDose}} = target;
   let restored = false;
@@ -687,16 +699,17 @@ $('undo-deduct').onclick = async () => {
         : {...record, undoDeduction: null};
     }));
     renderLibrary();
-    $('library-title').focus({preventScroll: true});
+    focusBeanActions(id);
     $('library-status').textContent = restored
       ? '已撤销减豆，余量恢复为 ' + previous + '\u00a0g。'
       : '这条豆档的余量已更新，无法撤销这次减豆。';
   } catch {
+    button.textContent = '重试撤销';
     $('library-status').textContent = '撤销失败，请重试。';
   } finally {
     button.disabled = false;
   }
-};
+}
 
 function clearConflicts() {
   for (const conflict of form.querySelectorAll('.ocr-conflict')) conflict.remove();
