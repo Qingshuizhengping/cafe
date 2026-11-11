@@ -56,7 +56,7 @@
   -moz-osx-font-smoothing:grayscale;
 }
 @media(prefers-color-scheme:dark){
-  :root{
+  :root:not([data-theme="light"]){
     color-scheme:dark;
     --bg:#141518;
     --surface:#222429;
@@ -620,3 +620,37 @@ dialog .dialog-actions{position:sticky;bottom:-22px;background:var(--surface);pa
       curve to var(--smooth-radius) 0 with calc(var(--smooth-radius) * .428571) 0 / calc(var(--smooth-radius) * .571429) 0,close);
   }
 }
+
+/* Explicit theme choice takes precedence over system appearance. */
+:root[data-theme="dark"]{
+    color-scheme:dark;
+    --bg:#141518;
+    --surface:#222429;
+    --ink:#f4f5f7;
+    --muted:#bec4ce;
+    --rule:#41454e;
+    --control-edge:#868d9a;
+    --action:#f4f5f7;
+    --action-ink:#17191d;
+    --action-hover:#dce0e6;
+    --selection:#333841;
+    --focus:#9bc3ff;
+    --cover:#353a43;
+    --photo-edge:#ffffff1a;
+    --glass-glint:#ffffff12;
+    --glass-top:#343944e6;
+    --glass-center:#282b32e6;
+    --glass-base:#22252ce6;
+    --glass-shadow:#0005;
+    --dock-current:#d8e7ff;
+    --dock-tint:#1c1e23e6;
+    --dock-sheen:#ffffff1c;
+    --dock-edge:#ffffff2b;
+    --dock-ink:#cbd1dc;
+    --dock-selection:#303e56;
+    --ledger-surface:#20242c;
+    --tile-foot:#242a35;
+    --tile-line:#414957;
+}
+#theme-toggle{display:grid;place-items:center;flex:0 0 44px;width:44px;height:44px;padding:0;color:var(--muted);background:var(--selection)}
+#theme-toggle svg{width:20px;height:20px}

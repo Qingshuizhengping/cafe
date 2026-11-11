@@ -10,7 +10,45 @@
 <link rel="icon" type="image/png" href="./assets/app-icon.png">
 <link rel="apple-touch-icon" sizes="180x180" href="./assets/app-icon.png">
 <meta name="description" content="豆档记录咖啡豆的烘焙日期、库存、冲煮和品鉴。">
-<link rel="stylesheet" href="./preview.css?v=19">
+<script>
+(() => {
+  const key = 'doudang-theme';
+  const root = document.documentElement;
+  const system = matchMedia('(prefers-color-scheme: dark)');
+  let preference;
+  try { preference = localStorage.getItem(key); } catch {}
+  const valid = value => value === 'light' || value === 'dark';
+  const selected = () => valid(preference) ? preference : system.matches ? 'dark' : 'light';
+  function apply() {
+    if (valid(preference)) root.dataset.theme = preference;
+    else delete root.dataset.theme;
+    const button = document.getElementById('theme-toggle');
+    if (!button) return;
+    const dark = selected() === 'dark';
+    button.hidden = false;
+    button.setAttribute('aria-pressed', String(dark));
+    button.title = dark ? '切换到浅色' : '切换到深色';
+    button.querySelector('.theme-sun').toggleAttribute('hidden', !dark);
+    button.querySelector('.theme-moon').toggleAttribute('hidden', dark);
+    const background = getComputedStyle(root).getPropertyValue('--bg').trim();
+    for (const meta of document.querySelectorAll('meta[name="theme-color"]')) meta.content = background;
+  }
+  apply();
+  document.addEventListener('DOMContentLoaded', () => {
+    apply();
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+      preference = selected() === 'dark' ? 'light' : 'dark';
+      try { localStorage.setItem(key, preference); } catch {}
+      apply();
+    });
+  });
+  system.addEventListener('change', apply);
+  addEventListener('storage', event => {
+    if (event.key === key || event.key === null) { preference = event.newValue; apply(); }
+  });
+})();
+</script>
+<link rel="stylesheet" href="./preview.css?v=20">
 <script type="module" src="./preview.mjs?v=19"></script>
 </head>
 <body>
@@ -24,6 +62,10 @@
 </button>
 <span class="nav-context" id="nav-context"></span>
 <button id="account-open" type="button" aria-haspopup="dialog" disabled>账号</button>
+<button id="theme-toggle" type="button" aria-label="深色模式" aria-pressed="false" title="切换到深色" hidden>
+<svg class="theme-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 13A8.5 8.5 0 0 1 11 3.5a8.5 8.5 0 1 0 9.5 9.5Z"/></svg>
+<svg class="theme-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>
+</button>
 </nav>
 </header>
 <main class="shell" id="main-content" tabindex="-1">
