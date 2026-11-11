@@ -573,3 +573,18 @@ dialog .dialog-actions{position:sticky;bottom:-22px;background:var(--surface);pa
 .bean-title-line .bean-origin{max-width:7em;text-align:end}
 .bean-metrics{grid-template-columns:repeat(3,minmax(0,1fr));min-height:28px;padding-block:2px;line-height:1.5}
 .bean-phase,.bean-controls{align-self:center}
+
+/* Match text insets, keep one trailing action and remove unused card height. */
+.bean-card{min-height:0;grid-template-rows:minmax(24px,auto) minmax(28px,auto) minmax(44px,auto);row-gap:4px;padding-block:8px}
+.bean-title-line{padding-inline:8px}
+.bean-metrics>span{padding-inline:8px}
+.bean-metrics>span:first-child{padding-inline-end:2px;text-align:start}
+.bean-metrics>span:last-child{padding-inline-start:2px;text-align:end}
+.bean-controls{gap:0}
+.bean-action-header{display:none}
+.bean-row:focus-visible{outline-offset:-2px}
+@media(max-width:360px){
+  .bean-title-line{column-gap:4px}
+  .bean-title-line .record{font-size:15px}
+  .bean-title-line .bean-origin{font-size:12px}
+}

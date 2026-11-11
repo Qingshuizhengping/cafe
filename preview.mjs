@@ -337,15 +337,13 @@ function beanActionRow(card, controls, record, index) {
   const wrapper = document.createElement('div');
   wrapper.className = 'bean-row';
   wrapper.dataset.beanId = record.id;
+  wrapper.tabIndex = 0;
+  wrapper.setAttribute('role', 'group');
+  wrapper.setAttribute('aria-label', record.values.name + '，按左方向键打开操作');
   const actions = document.createElement('div');
   actions.className = 'bean-actions';
   actions.id = 'bean-actions-' + index;
-  const more = document.createElement('button');
-  more.type = 'button';
-  more.className = 'bean-more';
-  more.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>';
-  more.setAttribute('aria-label', '更多操作 · ' + record.values.name);
-  more.setAttribute('aria-controls', actions.id);
+  wrapper.setAttribute('aria-controls', actions.id);
   const pin = document.createElement('button');
   pin.type = 'button';
   pin.textContent = record.pinnedAt ? '取消置顶' : '置顶';
@@ -378,7 +376,6 @@ function beanActionRow(card, controls, record, index) {
   }
   actionButtons.append(pin, remove);
   actions.append(actionHeader, actionButtons);
-  controls.append(more);
   wrapper.append(card, actions);
   const cardButtons = card.querySelectorAll('button');
 
@@ -387,19 +384,32 @@ function beanActionRow(card, controls, record, index) {
     wrapper.classList.toggle('is-open', open);
     actions.inert = !open;
     for (const button of cardButtons) button.inert = open;
-    more.setAttribute('aria-expanded', String(open));
+    wrapper.setAttribute('aria-expanded', String(open));
     closeBeanActions = open ? close : closeBeanActions === close ? undefined : closeBeanActions;
   }
   function close(returnFocus = false) {
     const restoreFocus = returnFocus || actions.contains(document.activeElement);
     setOpen(false);
-    if (restoreFocus) more.focus({preventScroll: true});
+    if (restoreFocus) wrapper.focus({preventScroll: true});
   }
   setOpen(false);
-  more.onclick = () => {
+  const openActions = () => {
     setOpen(true);
     (undo ?? pin).focus({preventScroll: true});
   };
+  wrapper.addEventListener('keydown', event => {
+    if (event.key === 'ArrowLeft' && event.target === wrapper) {
+      event.preventDefault();
+      openActions();
+    } else if (event.key === 'ArrowRight' && wrapper.classList.contains('is-open')) {
+      event.preventDefault();
+      close(true);
+    }
+  });
+  card.addEventListener('contextmenu', event => {
+    event.preventDefault();
+    openActions();
+  });
   pin.onclick = async () => {
     pin.disabled = true;
     const pinnedAt = record.pinnedAt ? null : Date.now();
@@ -688,8 +698,7 @@ $('deduct-form').addEventListener('submit', async event => {
 
 function focusBeanActions(id) {
   const row = [...$('entries').querySelectorAll('.bean-row')].find(row => row.dataset.beanId === String(id));
-  const more = row?.querySelector('.bean-more');
-  (more ?? $('library-title')).focus({preventScroll: true});
+  (row ?? $('library-title')).focus({preventScroll: true});
 }
 
 async function undoDeduction(recordId, button) {
