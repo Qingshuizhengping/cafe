@@ -807,3 +807,7 @@ html[data-liquid-glass="webgl"] .deduct-button .qisao-optical-surface{opacity:.7
   .library-entry-actions #new-entry,.library-entry-actions #batch-open{border-color:ButtonText}
   .library-tools :is(input,select),.library-filters select{border-color:FieldText}
 }
+
+/* Restored card focus uses the bean name, without a rectangular browser outline. */
+.bean-row:focus{outline:none}
+.bean-row:focus-visible .record{text-decoration:underline;text-underline-offset:.18em}
