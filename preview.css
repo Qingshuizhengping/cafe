@@ -811,3 +811,9 @@ html[data-liquid-glass="webgl"] .deduct-button .qisao-optical-surface{opacity:.7
 /* Restored card focus uses the bean name, without a rectangular browser outline. */
 .bean-row:focus{outline:none}
 .bean-row:focus-visible .record{text-decoration:underline;text-underline-offset:.18em}
+
+/* Wrap origin phrases between terms, never through a country or region name. */
+.bean-title-line{display:flex;flex-wrap:wrap;align-items:baseline}
+.bean-title-line .record{flex:1 1 8em}
+.bean-title-line .bean-origin{display:flex;flex:0 1 auto;flex-wrap:wrap;justify-content:flex-end;gap:0 .3em;max-width:100%;margin-inline-start:auto;overflow-wrap:normal;word-break:keep-all}
+.bean-origin-term{display:block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

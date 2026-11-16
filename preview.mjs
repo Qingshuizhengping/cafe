@@ -678,7 +678,14 @@ function renderLibrary(announceResults = false) {
     if (values.origin?.trim()) {
       const origin = document.createElement('span');
       origin.className = 'bean-origin';
-      origin.textContent = values.origin.trim();
+      for (const word of values.origin.trim().split(/\s+/u)) {
+        const term = document.createElement('span');
+        term.className = 'bean-origin-term';
+        term.textContent = word;
+        term.title = word;
+        origin.append(term);
+      }
+      origin.setAttribute('aria-label', values.origin.trim());
       titleLine.append(origin);
     }
     if (context.length) {
