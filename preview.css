@@ -817,3 +817,18 @@ html[data-liquid-glass="webgl"] .deduct-button .qisao-optical-surface{opacity:.7
 .bean-title-line .record{flex:1 1 8em}
 .bean-title-line .bean-origin{display:flex;flex:0 1 auto;flex-wrap:wrap;justify-content:flex-end;gap:0 .3em;max-width:100%;margin-inline-start:auto;overflow-wrap:normal;word-break:keep-all}
 .bean-origin-term{display:block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Task surfaces: one quiet background, one action hierarchy, no optical renderer. */
+.bean-card{background:var(--surface);box-shadow:none}
+.bean-row:not(.is-open,.is-dragging){filter:none}
+.bean-metrics{background:none;box-shadow:none}
+:is(.primary,.secondary,.deduct-button),#theme-toggle,.bean-action-buttons button{box-shadow:none}
+.primary{background:var(--action);color:var(--action-ink)}
+.secondary,.deduct-button,#theme-toggle,.bean-action-buttons button:not(.danger-button){background:var(--selection);color:var(--ink)}
+.library-tools :is(input,select),.library-filters select{background:var(--surface);box-shadow:none}
+.app-nav::before{background:var(--surface);box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;border:1px solid var(--rule)}
+.library-count{background:none;padding-block:0}
+.library-count strong{font-size:var(--type-card)}
+.page-heading{align-items:center}
+.backup-rules{margin-block:0 16px}
+.backup-rules summary{font-size:var(--type-label);color:var(--muted)}

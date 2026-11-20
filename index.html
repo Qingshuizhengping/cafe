@@ -48,8 +48,8 @@
   });
 })();
 </script>
-<link rel="stylesheet" href="./preview.css?v=22">
-<script type="module" src="./preview.mjs?v=22"></script>
+<link rel="stylesheet" href="./preview.css?v=23">
+<script type="module" src="./preview.mjs?v=23"></script>
 </head>
 <body>
 <a class="skip-link" href="#main-content">跳到主要内容</a>
@@ -71,7 +71,7 @@
 <main class="shell" id="main-content" tabindex="-1">
 <section id="editor">
 <h1 id="editor-title" tabindex="-1">添加咖啡豆</h1>
-<p class="intro" id="editor-intro">拍下包装标签，核对识别结果后保存。</p>
+<p class="intro" id="editor-intro" hidden></p>
 <button id="show-capture" type="button" aria-controls="capture" hidden>豆袋照片与识别</button>
 <div class="layout">
 <aside class="capture" id="capture">
@@ -123,7 +123,7 @@
 <div id="library-tools" class="library-tools" hidden>
 <div class="library-search">
 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 4 4"/></svg>
-<label for="library-search" class="sr-only">搜索豆库</label><input id="library-search" type="search" placeholder="搜索名称、产地或烘焙商">
+<label for="library-search" class="sr-only">搜索豆库</label><input id="library-search" type="search" placeholder="搜索豆库">
 </div>
 <label for="library-filter" class="sr-only">库存状态</label><select id="library-filter"><option value="">全部库存</option><option value="available">还有余量</option><option value="empty">已用完</option></select>
 <label for="library-sort" class="sr-only">排序</label><select id="library-sort"><option value="recent">最近添加</option><option value="age">烘焙日期</option><option value="remaining">剩余克数</option><option value="price">单克价</option><option value="rating">个人评分</option><option value="name">名称</option></select>
@@ -146,7 +146,7 @@
 <section class="info-section" aria-labelledby="stock-history-title"><h2 id="stock-history-title">库存历史</h2><p class="supporting">库存调整单独记录，消耗统计只计算减豆与品鉴用量。</p><div id="stock-history"></div></section>
 </section>
 <section id="statistics" hidden aria-labelledby="stats-title">
-<div class="page-heading"><div><h1 id="stats-title" tabindex="-1">统计</h1><p class="intro">回看消耗、花费和喜欢的咖啡。</p></div><label class="compact-control">统计范围<select id="stats-range"><option value="30">近 30 天</option><option value="7">近 7 天</option><option value="all">全部记录</option></select></label></div>
+<div class="page-heading"><div><h1 id="stats-title" tabindex="-1">统计</h1></div><label class="compact-control">统计范围<select id="stats-range"><option value="30">近 30 天</option><option value="7">近 7 天</option><option value="all">全部记录</option></select></label></div>
 <div id="stats-overview" class="stat-grid"></div>
 <p class="supporting" id="stats-coverage"></p>
 <section class="info-section"><h2>消耗趋势</h2><p class="supporting">显示所选范围内最近 14 个有消耗记录的日期。</p><div id="consumption-chart" class="consumption-chart"></div></section>
@@ -154,7 +154,7 @@
 <section class="info-section"><h2>最近消耗</h2><div id="recent-consumption"></div></section>
 </section>
 <section id="brewing" hidden aria-labelledby="brew-title">
-<div class="page-heading"><div><h1 id="brew-title" tabindex="-1">冲煮</h1><p class="intro">选豆、设定分段，完成后记录这一杯。</p></div></div>
+<div class="page-heading"><div><h1 id="brew-title" tabindex="-1">冲煮</h1></div></div>
 <form id="brew-form" class="workspace-form">
 <label>咖啡豆<select id="brew-bean"></select></label>
 <label>冲煮方案<select id="brew-recipe"><option value="three">三段式</option><option value="four-six">4:6 五段式</option><option value="custom">自定义</option></select></label>
@@ -191,11 +191,11 @@
 <p id="brew-feedback" class="feedback" role="status"></p>
 </section>
 <section id="data-page" hidden aria-labelledby="data-title">
-<div class="page-heading"><div><h1 id="data-title" tabindex="-1">数据与备份</h1><p class="intro">把豆档、照片、品鉴与库存历史一起带走。</p></div></div>
-<section class="info-section"><h2>导出备份</h2><p>下载 JSON 备份，包含当前全部豆档与已保存的冲煮方案。</p><button id="backup-export" type="button" class="primary">导出全部数据</button></section>
-<section class="info-section"><h2>恢复备份</h2><p>选择豆档导出的 JSON 文件。确认前会显示导入数量，已有数据保留，内容不同的同编号豆档会另存为副本。</p><label class="file-label">选择备份<input id="backup-file" type="file" accept=".json,application/json"></label><div id="import-preview" hidden><p id="import-summary"></p><div class="action-row"><button id="backup-confirm" class="primary" type="button">确认合并导入</button><button id="backup-cancel" type="button">取消</button></div></div></section>
+<div class="page-heading"><div><h1 id="data-title" tabindex="-1">数据与备份</h1></div></div>
+<section class="info-section"><h2>导出备份</h2><button id="backup-export" type="button" class="primary">导出全部数据</button></section>
+<section class="info-section"><h2>恢复备份</h2><details class="backup-rules"><summary>合并规则</summary><p>已有数据保留；同编号但内容不同的豆档另存为副本。</p></details><label class="file-label">选择备份<input id="backup-file" type="file" accept=".json,application/json"></label><div id="import-preview" hidden><p id="import-summary"></p><div class="action-row"><button id="backup-confirm" class="primary" type="button">确认合并导入</button><button id="backup-cancel" type="button">取消</button></div></div></section>
 <p id="data-feedback" class="feedback" role="status"></p>
-<p class="supporting">登录后资料自动同步到服务器。本机模式的资料保存在当前浏览器，登录后可以合并到账号。</p>
+
 </section>
 </main>
 <dialog id="account-dialog" class="account-dialog" aria-labelledby="account-title">

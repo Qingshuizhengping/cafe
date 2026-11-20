@@ -1,10 +1,10 @@
 import {scanLabel} from './core/scan.mjs?v=6';
 import {recordStock, flavorState, unitCost, undoStock, readBackup} from './core/journal.mjs?v=8';
-import {createWorkspace} from './workspace.mjs?v=12';
+import {createWorkspace} from './workspace.mjs?v=13';
 import {createAccountStorage} from './account.mjs?v=8';
 import {createCamera, createImporter, componentEditor, recognizeFile} from './importer.mjs?v=5';
 import {normalizeComponents} from './core/recognition.mjs';
-import {installLiquidGlass} from './core/liquid-glass.mjs?v=1';
+
 
 const $ = id => document.getElementById(id);
 const form = $('entry');
@@ -1213,5 +1213,5 @@ $('account-open').disabled = false;
 renderLibrary();
 if (records.length || (account.user && !readDraft(null))) showLibrary(true, false);
 else if (readDraft(null)) openRecord();
-installLiquidGlass();
+
 

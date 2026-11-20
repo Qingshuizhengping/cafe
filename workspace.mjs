@@ -183,7 +183,7 @@ export function createWorkspace({getRecords, getRecipes, mutate, changeData, ses
     const list = $('tasting-list');
     list.replaceChildren();
     const notes = [...(record.tastings ?? [])].sort((a, b) => b.at - a.at);
-    if (!notes.length) list.append(node('p', '还没有品鉴记录。记下每一杯的参数与感受，之后可以回看对比。', 'supporting'));
+    if (!notes.length) list.append(node('p', '暂无品鉴记录。', 'supporting'));
     for (const note of notes) {
       const item = node('article', null, 'journal-item');
       item.append(node('h3', dateTime(note.at) + (note.rating ? ' · ' + note.rating + '/5 分' : '')));
