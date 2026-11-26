@@ -102,9 +102,6 @@ main{padding-bottom:calc(100px + env(safe-area-inset-bottom))}
   padding-top:env(safe-area-inset-top);
   border-bottom:1px solid var(--rule);
   background:var(--bg);
-  background:color-mix(in srgb,var(--bg) 88%,transparent);
-  -webkit-backdrop-filter:blur(16px);
-  backdrop-filter:blur(16px);
 }
 .shell{max-width:920px;margin:auto;padding-inline:24px}
 .skip-link:not(:focus){position:fixed;clip-path:inset(50%);width:1px;height:1px;overflow:hidden;white-space:nowrap}
@@ -151,7 +148,7 @@ footer button{flex-shrink:0}
 #entries{margin-top:16px}
 #entries:not(.bean-grid){padding-block:20px;color:var(--muted)}
 .bean-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding-bottom:24px}
-.bean-row{position:relative;overflow:hidden;--action-width:158px}
+.bean-row{isolation:isolate;position:relative;overflow:hidden;--action-width:158px}
 .bean-card{
   position:relative;
   z-index:1;
@@ -442,8 +439,9 @@ dialog .dialog-actions{position:sticky;bottom:-22px;background:var(--surface);pa
 #brew-clock{display:block;font-size:56px;font-weight:550;line-height:1.2;font-variant-numeric:tabular-nums;letter-spacing:-.03em}
 #brew-stage-status{font-size:14px;min-height:42px}
 .timer-panel .action-row{justify-content:center}
-.file-label{display:block;font-size:14px;font-weight:600}
-.file-label input{display:block;padding:8px 0;max-width:100%}
+.backup-picker{position:relative;display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:12px;background:var(--selection);color:var(--ink);font-weight:600}
+.backup-picker input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.backup-picker:focus-within{outline:2px solid var(--focus);outline-offset:2px}
 .library-filters{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 .library-filter-panel summary{font-size:13px;color:var(--muted);cursor:pointer;min-height:44px;align-content:center}
 .library-filter-panel[open]{margin-bottom:12px}
